@@ -366,6 +366,7 @@ select {
   padding: 5px 7px;
   text-overflow: ellipsis;
   white-space: nowrap;
+  user-select: none;
 }
 
 .blockly-block::before {
@@ -401,8 +402,9 @@ select {
   margin-left: 0;
   margin-top: -1px;
   min-height: 54px;
-  min-width: 520px;
+  min-width: 360px;
   padding: 10px 14px 14px 50px;
+  width: max-content;
 }
 
 .loop-section .function-body {
@@ -454,7 +456,7 @@ select {
 
 .blockly-block.control {
   background: var(--block-color, var(--block-logic));
-  min-width: 440px;
+  min-width: 300px;
 }
 
 .blockly-block.serial {
@@ -476,7 +478,7 @@ select {
   grid-template-columns: 46px auto;
   margin-top: -2px;
   min-height: 48px;
-  min-width: 520px;
+  min-width: 320px;
   padding: 8px 10px 10px 0;
   width: max-content;
 }
@@ -530,8 +532,13 @@ select {
 }
 
 .slot.value,
+.slot.ioValue,
 .slot.number {
   background: var(--block-math);
+}
+
+.slot.ioValue {
+  background: var(--block-io);
 }
 
 .slot.string {

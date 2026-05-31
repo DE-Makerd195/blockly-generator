@@ -187,18 +187,18 @@ function classifyLine(rawLine, stats) {
       textField("把"),
       expressionField(pinMode[1]),
       textField("設為"),
-      valueField(translateMode(pinMode[2]), "value")
+      valueField(translateMode(pinMode[2]), "ioValue")
     ]);
   }
 
   const digitalWrite = simple.match(/^digitalWrite\s*\((.+),\s*(HIGH|LOW)\)$/);
   if (digitalWrite) {
     collectPin(digitalWrite[1], stats);
-    return block("pin", "數位輸出", `讓 ${digitalWrite[1]} ${digitalWrite[2] === "HIGH" ? "輸出 HIGH / 亮起" : "輸出 LOW / 熄滅"}`, false, "digitalWrite", [
+    return block("pin", "數位輸出", `讓 ${digitalWrite[1]} ${digitalWrite[2] === "HIGH" ? "輸出 高電位 / 亮起" : "輸出 低電位 / 熄滅"}`, false, "digitalWrite", [
       textField("讓"),
       expressionField(digitalWrite[1]),
       textField("輸出"),
-      valueField(digitalWrite[2], "value"),
+      valueField(translateLevel(digitalWrite[2]), "ioValue"),
       textField(digitalWrite[2] === "HIGH" ? "/ 亮起" : "/ 熄滅")
     ]);
   }
@@ -324,6 +324,13 @@ function translateMode(mode) {
   }[mode] || mode;
 }
 
+function translateLevel(level) {
+  return {
+    HIGH: "高電位",
+    LOW: "低電位"
+  }[level] || level;
+}
+
 function collectPin(value, stats) {
   const cleaned = value.trim();
   if (/^(?:A?\d+|D\d+|GPIO\d+|[A-Za-z_]\w*Pin)$/.test(cleaned)) {
@@ -335,6 +342,8 @@ function convertCondition(condition) {
   return condition
     .replace(/digitalRead\s*\((.+?)\)/g, "讀取 $1")
     .replace(/analogRead\s*\((.+?)\)/g, "類比讀取 $1")
+    .replace(/\bHIGH\b/g, "高電位")
+    .replace(/\bLOW\b/g, "低電位")
     .replace(/==/g, "等於")
     .replace(/!=/g, "不等於")
     .replace(/>=/g, "大於等於")
@@ -397,7 +406,11 @@ function renderNode(node) {
   if (node.color) blockEl.style.setProperty("--block-color", node.color);
   blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span><span class="moto-tag"></span>`;
   blockEl.querySelector(".kind").textContent = node.kind;
-  blockEl.querySelector(".label").innerHTML = node.fields ? renderFields(node.fields) : formatBlocklyLabel(node.label);
+  blockEl.querySelector(".label").innerHTML = node.fields
+    ? renderFields(node.fields)
+    : node.moto?.type === "custom_code"
+      ? escapeHtml(node.label)
+      : formatBlocklyLabel(node.label);
   const motoTag = blockEl.querySelector(".moto-tag");
   if (node.moto) {
     motoTag.textContent = node.moto.type;
@@ -459,7 +472,9 @@ function renderExpression(value) {
   }
   if (/^["']/.test(expression)) return `<span class="slot string">${escapeHtml(expression)}</span>`;
   if (/^\d+(?:\.\d+)?$/.test(expression)) return `<span class="slot number">${escapeHtml(expression)}</span>`;
-  if (/^(HIGH|LOW|OUTPUT|INPUT_PULLUP|INPUT)$/.test(expression)) return `<span class="slot value">${escapeHtml(expression)}</span>`;
+  if (/^(HIGH|LOW)$/.test(expression)) return `<span class="slot ioValue">${escapeHtml(translateLevel(expression))}</span>`;
+  if (/^(高電位|低電位)$/.test(expression)) return `<span class="slot ioValue">${escapeHtml(expression)}</span>`;
+  if (/^(OUTPUT|INPUT_PULLUP|INPUT)$/.test(expression)) return `<span class="slot ioValue">${escapeHtml(translateMode(expression))}</span>`;
   return `<span class="slot variable">${escapeHtml(expression)}</span>`;
 }
 
@@ -526,12 +541,14 @@ function buildExportSvg() {
 function drawExportNodes(nodes, x, y, maxWidth) {
   let svg = "";
   let cursor = y;
+  let width = 0;
   nodes.forEach((node) => {
     const drawn = drawExportNode(node, x, cursor, maxWidth);
     svg += drawn.svg;
     cursor += drawn.height + 12;
+    width = Math.max(width, drawn.width || 0);
   });
-  return { svg, height: cursor - y };
+  return { svg, height: cursor - y, width };
 }
 
 function drawExportNode(node, x, y, maxWidth) {
@@ -543,7 +560,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const bodyY = y + 39;
     const children = drawExportNodes(node.children || [], bodyX, bodyY + 12, maxWidth - 86);
     const bodyH = Math.max(64, children.height + 30);
-    const bodyW = Math.max(560, Math.min(maxWidth, 1000));
+    const bodyW = Math.max(380, Math.min(maxWidth, children.width + 86));
     const title = isLoop ? "loop   重複執行區" : "setup   開始設定區";
     const svg = `
       ${svgBlockPath(x, y, headW, 40, color, false)}
@@ -552,7 +569,7 @@ function drawExportNode(node, x, y, maxWidth) {
       <rect x="${x}" y="${bodyY}" width="${bodyW}" height="${bodyH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       ${children.svg}
     `;
-    return { svg, height: 40 + bodyH };
+    return { svg, height: 40 + bodyH, width: bodyW };
   }
 
   const color = exportColorFor(node);
@@ -569,13 +586,13 @@ function drawExportNode(node, x, y, maxWidth) {
     const childX = x + 54;
     const children = drawExportNodes(node.children, childX, mouthY + 12, maxWidth - 70);
     const mouthH = Math.max(58, children.height + 30);
-    const mouthW = Math.max(520, Math.min(maxWidth, w + 80));
+    const mouthW = Math.max(340, Math.min(maxWidth, Math.max(w + 24, children.width + 70)));
     svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="600" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>
       ${children.svg}`;
     height += mouthH - 2;
   }
-  return { svg, height };
+  return { svg, height, width: Math.max(w, node.children?.length ? 340 : 0) };
 }
 
 function svgBlockPath(x, y, w, h, color, hasTopNotch) {
