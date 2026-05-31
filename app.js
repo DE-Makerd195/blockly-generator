@@ -404,20 +404,13 @@ function renderNode(node) {
   const blockEl = document.createElement("div");
   blockEl.className = `blockly-block ${node.type}${node.opens ? " has-mouth" : ""}`;
   if (node.color) blockEl.style.setProperty("--block-color", node.color);
-  blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span><span class="moto-tag"></span>`;
+  blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span>`;
   blockEl.querySelector(".kind").textContent = node.kind;
   blockEl.querySelector(".label").innerHTML = node.fields
     ? renderFields(node.fields)
     : node.moto?.type === "custom_code"
       ? escapeHtml(node.label)
       : formatBlocklyLabel(node.label);
-  const motoTag = blockEl.querySelector(".moto-tag");
-  if (node.moto) {
-    motoTag.textContent = node.moto.type;
-    motoTag.title = node.moto.display;
-  } else {
-    motoTag.remove();
-  }
   wrap.append(blockEl);
 
   if (node.children?.length) {
@@ -559,13 +552,12 @@ function drawExportNode(node, x, y, maxWidth) {
   const bodyX = x + 48;
     const bodyY = y + 39;
     const children = drawExportNodes(node.children || [], bodyX, bodyY + 12, maxWidth - 86);
-    const bodyH = Math.max(64, children.height + 30);
+    const bodyH = Math.max(42, children.height + 16);
     const bodyW = Math.max(380, Math.min(maxWidth, children.width + 86));
     const title = isLoop ? "loop   重複執行區" : "setup   開始設定區";
     const svg = `
       ${svgBlockPath(x, y, headW, 40, color, false)}
       <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="500" fill="#fff">${escapeXml(title)}</text>
-      <text x="${x + headW - 116}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="10" fill="rgba(255,255,255,.82)">${escapeXml(node.moto?.type || "")}</text>
       <rect x="${x}" y="${bodyY}" width="${bodyW}" height="${bodyH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       ${children.svg}
     `;
@@ -575,20 +567,19 @@ function drawExportNode(node, x, y, maxWidth) {
   const color = exportColorFor(node);
   const label = `${node.kind}：${node.label}`;
   const w = Math.max(300, Math.min(maxWidth, 620));
-  const labelWidth = node.moto ? w - 220 : w - 40;
+  const labelWidth = w - 40;
   const labelLines = wrapSvgText(label, Math.max(14, Math.floor(labelWidth / 14)));
   const blockH = Math.max(38, 18 + labelLines.length * 18);
   let svg = `${svgBlockPath(x, y, w, blockH, color, true)}
     ${svgTextLines(labelLines, x + 18, y + 24, 15, "#fff")}
-    ${node.moto ? `<text x="${x + w - 190}" y="${y + 24}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="10" fill="rgba(255,255,255,.86)">${escapeXml(node.moto.type)}</text>` : ""}
   `;
   let height = blockH;
   if (node.children?.length) {
     const mouthX = x;
     const mouthY = y + blockH - 2;
     const childX = x + 54;
-    const children = drawExportNodes(node.children, childX, mouthY + 12, maxWidth - 70);
-    const mouthH = Math.max(58, children.height + 30);
+    const children = drawExportNodes(node.children, childX, mouthY + 8, maxWidth - 70);
+    const mouthH = Math.max(36, children.height + 14);
     const mouthW = Math.max(340, Math.min(maxWidth, Math.max(w + 24, children.width + 70)));
     svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="600" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>

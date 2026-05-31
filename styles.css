@@ -212,7 +212,7 @@ select {
 }
 
 #codeInput {
-  height: 560px;
+  height: clamp(360px, 58vh, 560px);
   min-height: 0;
   resize: none;
 }
@@ -271,7 +271,7 @@ select {
   background-position: 4px 4px;
   background-size: 24px 24px;
   border: 1px solid var(--line);
-  height: 560px;
+  max-height: clamp(360px, 58vh, 560px);
   min-height: 0;
   overflow-x: hidden;
   overflow-y: auto;
@@ -358,23 +358,6 @@ select {
   width: fit-content;
 }
 
-.blockly-block .moto-tag {
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.24);
-  color: rgba(255, 255, 255, 0.86);
-  flex: 0 1 auto;
-  font-family: Consolas, "Courier New", monospace;
-  font-size: 11px;
-  line-height: 1;
-  margin-left: 4px;
-  max-width: 210px;
-  overflow: hidden;
-  padding: 5px 7px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  user-select: none;
-}
-
 .blockly-block::before {
   background: #fbfcfa;
   border-radius: 0 0 8px 8px;
@@ -407,10 +390,10 @@ select {
   gap: 3px;
   margin-left: 0;
   margin-top: -1px;
-  min-height: 54px;
+  min-height: 0;
   min-width: 360px;
   max-width: 100%;
-  padding: 10px 14px 14px 50px;
+  padding: 8px 12px 8px 48px;
   width: max-content;
 }
 
@@ -486,10 +469,10 @@ select {
   display: grid;
   grid-template-columns: 46px auto;
   margin-top: -2px;
-  min-height: 48px;
+  min-height: 0;
   min-width: 320px;
   max-width: 100%;
-  padding: 8px 10px 10px 0;
+  padding: 6px 8px 6px 0;
   width: fit-content;
 }
 
@@ -573,7 +556,7 @@ select {
 .outline-view {
   background: #fbfcfa;
   border: 1px solid var(--line);
-  height: 560px;
+  max-height: clamp(360px, 58vh, 560px);
   line-height: 1.6;
   margin: 0;
   min-height: 0;
