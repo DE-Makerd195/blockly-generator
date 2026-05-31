@@ -244,10 +244,13 @@ function renderBlocks(model) {
 function renderNode(node) {
   const wrap = document.createElement("div");
   if (node.type === "function") {
-    wrap.className = "function-stack";
+    const isLoop = node.label.startsWith("loop");
+    wrap.className = `function-stack ${isLoop ? "loop-section" : "setup-section"}`;
     const title = document.createElement("div");
     title.className = "section-label";
-    title.textContent = node.label;
+    title.innerHTML = `<span class="section-name"></span><span class="section-role"></span>`;
+    title.querySelector(".section-name").textContent = isLoop ? "loop()" : "setup()";
+    title.querySelector(".section-role").textContent = isLoop ? "重複執行區" : "開始設定區";
     wrap.append(title);
     const childStack = document.createElement("div");
     childStack.className = "stack function-body";
