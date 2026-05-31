@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>程式碼轉 Blockly 圖像產生器</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div id="code-to-blockly-widget" class="ctb-widget app-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Code to Blockly Toolkit</p>
+          <h1>程式碼轉標準化 Blockly 圖像產生器</h1>
+          <p class="header-note">可嵌入 WordPress 頁面的教學用轉換工具</p>
+        </div>
+        <div class="toolbar" aria-label="匯出工具">
+          <button id="loadExample" type="button" title="載入範例">範例</button>
+          <button id="exportSvg" type="button" title="下載 SVG">SVG</button>
+          <button id="exportPng" type="button" title="下載 PNG">PNG</button>
+        </div>
+      </header>
+
+      <main class="workspace">
+        <section class="editor-pane" aria-label="原始程式碼輸入">
+          <div class="pane-head">
+            <div>
+              <h2>原始程式碼</h2>
+              <p>目前轉換器支援 Arduino C；語言層已預留後續擴充。</p>
+            </div>
+            <div class="selector-row">
+              <label class="select-wrap">
+                <span>語言</span>
+                <select id="languageSelect">
+                  <option value="arduino">Arduino C</option>
+                  <option value="micropython">MicroPython（預留）</option>
+                  <option value="python">Python（預留）</option>
+                  <option value="javascript">JavaScript（預留）</option>
+                </select>
+              </label>
+              <label class="select-wrap">
+                <span>板子</span>
+                <select id="boardSelect">
+                  <option value="uno">Arduino Uno</option>
+                  <option value="nano">Arduino Nano</option>
+                  <option value="leonardo">Arduino Leonardo</option>
+                  <option value="esp8266">ESP8266</option>
+                  <option value="d1mini">D1 mini</option>
+                  <option value="esp32">ESP32</option>
+                </select>
+              </label>
+            </div>
+          </div>
+          <textarea id="codeInput" spellcheck="false" aria-label="貼上原始程式碼"></textarea>
+          <div class="analysis-strip">
+            <div>
+              <span class="metric-label">辨識積木</span>
+              <strong id="blockCount">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">腳位</span>
+              <strong id="pinCount">0</strong>
+            </div>
+            <div>
+              <span class="metric-label">提示</span>
+              <strong id="warningCount">0</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="preview-pane" aria-label="Blockly 圖像預覽">
+          <div class="pane-head">
+            <div>
+              <h2>標準化積木圖</h2>
+              <p id="boardHint">Arduino Uno / Nano 內建 LED 通常是 D13。</p>
+            </div>
+            <div class="view-tabs" role="tablist" aria-label="預覽模式">
+              <button class="active" type="button" data-view="blocks">積木</button>
+              <button type="button" data-view="outline">清單</button>
+            </div>
+          </div>
+          <div id="blockCanvas" class="block-canvas" aria-live="polite"></div>
+          <ol id="outlineView" class="outline-view" hidden></ol>
+        </section>
+
+        <section class="reference-pane" aria-label="轉換說明與提醒">
+          <div>
+            <h2>教學交接單</h2>
+            <div id="handoffList" class="handoff-list"></div>
+          </div>
+          <div>
+            <h2>AI Prompt 模板</h2>
+            <textarea id="promptTemplate" spellcheck="false" aria-label="AI Prompt 模板"></textarea>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js"></script>
+  </body>
+</html>
