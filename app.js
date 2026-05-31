@@ -526,7 +526,7 @@ function renderHandoff(stats) {
 }
 
 function buildExportSvg() {
-  const width = 1120;
+  const width = 860;
   const drawn = drawExportNodes(latestModel, 24, 54, width - 48);
   const height = Math.max(220, drawn.height + 86);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
@@ -556,7 +556,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const isLoop = node.label.startsWith("loop");
     const color = node.color || MOTO_COLORS.ADVANCED_HUE;
     const headW = isLoop ? 300 : 310;
-    const bodyX = x + 48;
+  const bodyX = x + 48;
     const bodyY = y + 39;
     const children = drawExportNodes(node.children || [], bodyX, bodyY + 12, maxWidth - 86);
     const bodyH = Math.max(64, children.height + 30);
@@ -574,15 +574,18 @@ function drawExportNode(node, x, y, maxWidth) {
 
   const color = exportColorFor(node);
   const label = `${node.kind}：${node.label}`;
-  const w = Math.max(360, Math.min(maxWidth, estimateExportWidth(label, node.moto?.type)));
-  let svg = `${svgBlockPath(x, y, w, 38, color, true)}
-    <text x="${x + 18}" y="${y + 24}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="400" fill="#fff">${escapeXml(label)}</text>
+  const w = Math.max(300, Math.min(maxWidth, 620));
+  const labelWidth = node.moto ? w - 220 : w - 40;
+  const labelLines = wrapSvgText(label, Math.max(14, Math.floor(labelWidth / 14)));
+  const blockH = Math.max(38, 18 + labelLines.length * 18);
+  let svg = `${svgBlockPath(x, y, w, blockH, color, true)}
+    ${svgTextLines(labelLines, x + 18, y + 24, 15, "#fff")}
     ${node.moto ? `<text x="${x + w - 190}" y="${y + 24}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="10" fill="rgba(255,255,255,.86)">${escapeXml(node.moto.type)}</text>` : ""}
   `;
-  let height = 38;
+  let height = blockH;
   if (node.children?.length) {
     const mouthX = x;
-    const mouthY = y + 36;
+    const mouthY = y + blockH - 2;
     const childX = x + 54;
     const children = drawExportNodes(node.children, childX, mouthY + 12, maxWidth - 70);
     const mouthH = Math.max(58, children.height + 30);
@@ -611,8 +614,36 @@ function exportColorFor(node) {
   }[node.type] || MOTO_COLORS.PROCEDURES_HUE;
 }
 
-function estimateExportWidth(label, motoType = "") {
-  return 120 + label.length * 14 + (motoType ? Math.min(220, motoType.length * 7 + 36) : 0);
+function wrapSvgText(text, maxChars) {
+  const chunks = [];
+  let current = "";
+  text.split(/(\s+)/).forEach((part) => {
+    if (!part) return;
+    if (/^\s+$/.test(part)) {
+      if (current && !current.endsWith(" ")) current += " ";
+      return;
+    }
+    if ((current + part).length <= maxChars) {
+      current += part;
+      return;
+    }
+    if (current.trim()) chunks.push(current.trim());
+    if (part.length <= maxChars) {
+      current = part;
+      return;
+    }
+    for (let i = 0; i < part.length; i += maxChars) {
+      const segment = part.slice(i, i + maxChars);
+      if (segment.length === maxChars) chunks.push(segment);
+      else current = segment;
+    }
+  });
+  if (current.trim()) chunks.push(current.trim());
+  return chunks.length ? chunks : [text];
+}
+
+function svgTextLines(lines, x, y, size, fill) {
+  return `<text x="${x}" y="${y}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="${size}" font-weight="400" fill="${fill}">${lines.map((line, index) => `<tspan x="${x}" dy="${index === 0 ? 0 : size + 3}">${escapeXml(line)}</tspan>`).join("")}</text>`;
 }
 
 function escapeHtml(text) {
