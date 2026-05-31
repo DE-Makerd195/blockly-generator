@@ -403,7 +403,7 @@ function drawExportNodes(nodes, x, y, maxWidth) {
 function drawExportNode(node, x, y, maxWidth) {
   if (node.type === "function") {
     const isLoop = node.label.startsWith("loop");
-    const color = isLoop ? "#5f8fc2" : "#8f5aa8";
+    const color = isLoop ? "#2f8f70" : "#8f5aa8";
     const headW = isLoop ? 300 : 310;
     const bodyX = x + 48;
     const bodyY = y + 39;
@@ -436,7 +436,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const children = drawExportNodes(node.children, childX, mouthY + 12, maxWidth - 70);
     const mouthH = Math.max(58, children.height + 30);
     const mouthW = Math.max(520, Math.min(maxWidth, w + 80));
-    svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="#5f8fc2" stroke="rgba(0,0,0,.16)"/>
+    svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="#5b72c3" stroke="rgba(0,0,0,.16)"/>
       <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="600" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>
       ${children.svg}`;
     height += mouthH - 2;
@@ -451,10 +451,10 @@ function svgBlockPath(x, y, w, h, color, hasTopNotch) {
 
 function exportColorFor(node) {
   return {
-    pin: "#4f88c6",
-    timing: "#d99b32",
-    control: "#5f8fc2",
-    serial: "#55aa91",
+    pin: "#2f90b8",
+    timing: "#d28a24",
+    control: "#5b72c3",
+    serial: "#4aa382",
     custom: "#c65c90"
   }[node.type] || "#7c8580";
 }

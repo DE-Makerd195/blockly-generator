@@ -12,12 +12,13 @@
   --blue: #3567b8;
   --violet: #7b4bb0;
   --block-event: #8f5aa8;
-  --block-logic: #5f8fc2;
-  --block-io: #4f88c6;
+  --block-loop: #2f8f70;
+  --block-logic: #5b72c3;
+  --block-io: #2f90b8;
   --block-data: #c65c90;
-  --block-text: #55aa91;
-  --block-time: #d99b32;
-  --block-custom: #7c8580;
+  --block-text: #4aa382;
+  --block-time: #d28a24;
+  --block-custom: #747d84;
   --gray-block: #eef1ee;
   --shadow: 0 16px 42px rgba(26, 38, 31, 0.1);
   font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
@@ -306,7 +307,7 @@ select {
 }
 
 .loop-section .function-block-head {
-  background: var(--block-logic);
+  background: var(--block-loop);
 }
 
 .function-block-head::after {
@@ -403,7 +404,7 @@ select {
 }
 
 .loop-section .function-body {
-  background: var(--block-logic);
+  background: var(--block-loop);
 }
 
 .blockly-block .kind {
