@@ -11,14 +11,16 @@
   --red: #c84a35;
   --blue: #3567b8;
   --violet: #7b4bb0;
-  --block-event: #8f5aa8;
-  --block-loop: #2f8f70;
-  --block-logic: #5b72c3;
-  --block-io: #2f90b8;
-  --block-data: #c65c90;
-  --block-text: #4aa382;
-  --block-time: #d28a24;
-  --block-custom: #747d84;
+  --block-event: #EB4E4F;
+  --block-loop: #EB4E4F;
+  --block-logic: #F5C920;
+  --block-loops: #FF99FF;
+  --block-math: #3CB371;
+  --block-io: #00BFFF;
+  --block-data: #FFA500;
+  --block-text: #3CB371;
+  --block-time: #FFA500;
+  --block-custom: #FFA500;
   --gray-block: #eef1ee;
   --shadow: 0 16px 42px rgba(26, 38, 31, 0.1);
   font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
@@ -291,7 +293,7 @@ select {
 
 .function-block-head {
   align-items: center;
-  background: var(--block-event);
+  background: var(--block-color, var(--block-event));
   border: 1px solid rgba(0, 0, 0, 0.16);
   box-shadow:
     inset 0 1px rgba(255, 255, 255, 0.22),
@@ -307,7 +309,7 @@ select {
 }
 
 .loop-section .function-block-head {
-  background: var(--block-loop);
+  background: var(--block-color, var(--block-loop));
 }
 
 .function-block-head::after {
@@ -391,7 +393,7 @@ select {
 }
 
 .function-body {
-  background: var(--block-event);
+  background: var(--block-color, var(--block-event));
   box-shadow:
     inset 2px 0 rgba(255, 255, 255, 0.16),
     inset -2px 0 rgba(0, 0, 0, 0.1);
@@ -404,7 +406,7 @@ select {
 }
 
 .loop-section .function-body {
-  background: var(--block-loop);
+  background: var(--block-color, var(--block-loop));
 }
 
 .blockly-block .kind {
@@ -443,28 +445,28 @@ select {
 }
 
 .blockly-block.pin {
-  background: var(--block-io);
+  background: var(--block-color, var(--block-io));
 }
 
 .blockly-block.timing {
-  background: var(--block-time);
+  background: var(--block-color, var(--block-time));
 }
 
 .blockly-block.control {
-  background: var(--block-logic);
+  background: var(--block-color, var(--block-logic));
   min-width: 440px;
 }
 
 .blockly-block.serial {
-  background: var(--block-text);
+  background: var(--block-color, var(--block-io));
 }
 
 .blockly-block.custom {
-  background: var(--block-data);
+  background: var(--block-color, var(--block-data));
 }
 
 .block-mouth {
-  background: var(--block-logic);
+  background: var(--block-color, var(--block-logic));
   border-left: 1px solid rgba(0, 0, 0, 0.16);
   box-shadow:
     inset 2px 0 rgba(255, 255, 255, 0.16),
@@ -514,21 +516,30 @@ select {
   vertical-align: middle;
 }
 
+.slot.expression {
+  background: var(--block-math);
+  gap: 4px;
+}
+
+.slot.expression .slot {
+  margin: 0 1px;
+}
+
 .slot.variable {
-  background: #d975a9;
+  background: var(--block-data);
 }
 
 .slot.value,
 .slot.number {
-  background: #b9dbf7;
+  background: var(--block-math);
 }
 
 .slot.string {
-  background: #86d0b8;
+  background: var(--block-text);
 }
 
 .slot.operator {
-  background: #d6e4f1;
+  background: var(--block-math);
 }
 
 .empty-state {

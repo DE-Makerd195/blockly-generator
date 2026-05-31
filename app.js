@@ -14,28 +14,45 @@ const languageHints = {
   javascript: "JavaScript 轉換器已預留介面；目前仍以 Arduino C 規則解析。"
 };
 
+const MOTO_COLORS = {
+  ADVANCED_HUE: "#EB4E4F",
+  LOGIC_HUE: "#F5C920",
+  LOOPS_HUE: "#FF99FF",
+  MATH_HUE: "#3CB371",
+  TEXTS_HUE: "#3CB371",
+  VARIABLES_HUE: "#FFA500",
+  PROCEDURES_HUE: "#FFA500",
+  TIME_HUE: "#FFA500",
+  INOUT_HUE: "#00BFFF",
+  SERIAL_HUE: "#00BFFF",
+  SERVO_HUE: "#1E90FF",
+  BUZZER_HUE: "#1E90FF"
+};
+
 const motoBlocklyBlocks = {
-  setup: { type: "arduino_setup", category: "程式開始", display: "motoBlockly：程式開始" },
-  loop: { type: "arduino_setup", category: "程式開始", display: "motoBlockly：loop 區" },
-  variable: { type: "variables_set", category: "變量", display: "motoBlockly：變量" },
-  pinMode: { type: "inout_pinmode_val", category: "腳位設定", display: "motoBlockly：腳位模式" },
-  digitalWrite: { type: "inout_digital_write_v2", category: "數位輸出", display: "motoBlockly：數位輸出" },
-  digitalRead: { type: "inout_digital_read_v2", category: "數位讀取", display: "motoBlockly：數位讀取" },
-  analogRead: { type: "inout_analog_read_v2", category: "類比讀取", display: "motoBlockly：類比讀取" },
-  analogWrite: { type: "inout_analog_write_v2", category: "PWM 輸出", display: "motoBlockly：PWM 輸出" },
-  delay: { type: "delay_custom", category: "時間", display: "motoBlockly：等待" },
-  delayMicroseconds: { type: "delayMicroseconds_custom", category: "時間", display: "motoBlockly：微秒等待" },
-  millis: { type: "millis", category: "時間", display: "motoBlockly：millis" },
-  serialBegin: { type: "serial_setup", category: "串列埠", display: "motoBlockly：Serial 設定" },
-  serialPrint: { type: "serial_print", category: "串列埠", display: "motoBlockly：Serial print" },
-  serialPrintln: { type: "serial_printL", category: "串列埠", display: "motoBlockly：Serial println" },
-  if: { type: "controls_if", category: "邏輯", display: "motoBlockly：if" },
-  for: { type: "controls_for", category: "迴圈", display: "motoBlockly：for" },
-  while: { type: "while_do", category: "迴圈", display: "motoBlockly：while" },
-  tone: { type: "custom_tone_v1", category: "蜂鳴器", display: "motoBlockly：tone" },
-  noTone: { type: "no_tone", category: "蜂鳴器", display: "motoBlockly：noTone" },
-  servoMove: { type: "servo_move", category: "伺服馬達", display: "motoBlockly：伺服馬達" },
-  custom: { type: "custom_code", category: "自製積木", display: "motoBlockly：自訂程式" }
+  setup: { type: "arduino_setup", category: "程式開始", hue: "ADVANCED_HUE", display: "motoBlockly：程式開始" },
+  loop: { type: "arduino_setup", category: "程式開始", hue: "ADVANCED_HUE", display: "motoBlockly：loop 區" },
+  variable: { type: "variables_set", category: "變量", hue: "VARIABLES_HUE", display: "motoBlockly：變量" },
+  pinMode: { type: "inout_pinmode_val", category: "腳位設定", hue: "INOUT_HUE", display: "motoBlockly：腳位模式" },
+  digitalWrite: { type: "inout_digital_write_v2", category: "數位輸出", hue: "INOUT_HUE", display: "motoBlockly：數位輸出" },
+  digitalRead: { type: "inout_digital_read_v2", category: "數位讀取", hue: "INOUT_HUE", display: "motoBlockly：數位讀取" },
+  analogRead: { type: "inout_analog_read_v2", category: "類比讀取", hue: "INOUT_HUE", display: "motoBlockly：類比讀取" },
+  analogWrite: { type: "inout_analog_write_v2", category: "PWM 輸出", hue: "INOUT_HUE", display: "motoBlockly：PWM 輸出" },
+  delay: { type: "delay_custom", category: "時間", hue: "TIME_HUE", display: "motoBlockly：等待" },
+  delayMicroseconds: { type: "delayMicroseconds_custom", category: "時間", hue: "TIME_HUE", display: "motoBlockly：微秒等待" },
+  millis: { type: "millis", category: "時間", hue: "TIME_HUE", display: "motoBlockly：millis" },
+  serialBegin: { type: "serial_setup", category: "串列埠", hue: "SERIAL_HUE", display: "motoBlockly：Serial 設定" },
+  serialPrint: { type: "serial_print", category: "串列埠", hue: "SERIAL_HUE", display: "motoBlockly：Serial print" },
+  serialPrintln: { type: "serial_printL", category: "串列埠", hue: "SERIAL_HUE", display: "motoBlockly：Serial println" },
+  if: { type: "controls_if", category: "邏輯", hue: "LOGIC_HUE", display: "motoBlockly：if" },
+  for: { type: "controls_for", category: "迴圈", hue: "LOOPS_HUE", display: "motoBlockly：for" },
+  while: { type: "while_do", category: "迴圈", hue: "LOOPS_HUE", display: "motoBlockly：while" },
+  tone: { type: "custom_tone_v1", category: "蜂鳴器", hue: "BUZZER_HUE", display: "motoBlockly：tone" },
+  noTone: { type: "no_tone", category: "蜂鳴器", hue: "BUZZER_HUE", display: "motoBlockly：noTone" },
+  servoMove: { type: "servo_move", category: "伺服馬達", hue: "SERVO_HUE", display: "motoBlockly：伺服馬達" },
+  remoteXYHandler: { type: "custom_code", category: "自製積木", hue: "PROCEDURES_HUE", display: "motoBlockly：RemoteXY Handler" },
+  defineMotor: { type: "custom_code", category: "自製積木", hue: "PROCEDURES_HUE", display: "motoBlockly：足球小車腳位定義" },
+  custom: { type: "custom_code", category: "自製積木", hue: "PROCEDURES_HUE", display: "motoBlockly：自訂程式" }
 };
 
 const exampleCode = `const int ledPin = 13;
@@ -134,7 +151,8 @@ function parseCode(code) {
 }
 
 function classifyLine(rawLine, stats) {
-  const line = rawLine.replace(/;$/, "");
+  const rawSimple = rawLine.trim().replace(/\s+/g, " ");
+  const line = rawSimple.replace(/;$/, "");
   const simple = line.replace(/\s+/g, " ");
 
   const functionMatch = simple.match(/^void\s+(setup|loop)\s*\(\s*\)/);
@@ -143,36 +161,67 @@ function classifyLine(rawLine, stats) {
     return block("function", "程式區塊", fn === "setup" ? "setup() 開始設定" : "loop() 重複執行", true, fn === "setup" ? "setup" : "loop");
   }
 
-  if (/^#include/.test(simple)) return block("meta", "函式庫", simple);
+  if (/^#include/.test(simple)) return block("custom", "函式庫", rawSimple, false, "custom");
+  if (/^#define\s+MOTOR_/.test(simple)) return block("custom", "足球小車定義", rawSimple, false, "defineMotor", [
+    textField("#define"),
+    valueField(simple.split(/\s+/)[1], "variable"),
+    expressionField(simple.split(/\s+/).slice(2).join(" "))
+  ]);
+  if (/^RemoteXY_Handler\s*\(\s*\)$/.test(simple)) return block("custom", "自訂程式", formatCustomStatement(rawSimple), false, "remoteXYHandler");
 
   const declaration = simple.match(/^(?:const\s+)?(?:int|float|long|bool|boolean|byte|char|String)\s+([A-Za-z_]\w*)\s*=\s*(.+)$/);
   if (declaration) {
     collectPin(declaration[2], stats);
-    return block("custom", "變數", `設定 ${declaration[1]} 為 ${declaration[2]}`, false, "variable");
+    return block("custom", "變數", `設定 ${declaration[1]} 為 ${declaration[2]}`, false, "variable", [
+      textField("設定"),
+      valueField(declaration[1], "variable"),
+      textField("為"),
+      expressionField(declaration[2])
+    ]);
   }
 
   const pinMode = simple.match(/^pinMode\s*\((.+),\s*(INPUT_PULLUP|INPUT|OUTPUT)\)$/);
   if (pinMode) {
     collectPin(pinMode[1], stats);
-    return block("pin", "腳位模式", `把 ${pinMode[1]} 設為 ${translateMode(pinMode[2])}`, false, "pinMode");
+    return block("pin", "腳位模式", `把 ${pinMode[1]} 設為 ${translateMode(pinMode[2])}`, false, "pinMode", [
+      textField("把"),
+      expressionField(pinMode[1]),
+      textField("設為"),
+      valueField(translateMode(pinMode[2]), "value")
+    ]);
   }
 
   const digitalWrite = simple.match(/^digitalWrite\s*\((.+),\s*(HIGH|LOW)\)$/);
   if (digitalWrite) {
     collectPin(digitalWrite[1], stats);
-    return block("pin", "數位輸出", `讓 ${digitalWrite[1]} ${digitalWrite[2] === "HIGH" ? "輸出 HIGH / 亮起" : "輸出 LOW / 熄滅"}`, false, "digitalWrite");
+    return block("pin", "數位輸出", `讓 ${digitalWrite[1]} ${digitalWrite[2] === "HIGH" ? "輸出 HIGH / 亮起" : "輸出 LOW / 熄滅"}`, false, "digitalWrite", [
+      textField("讓"),
+      expressionField(digitalWrite[1]),
+      textField("輸出"),
+      valueField(digitalWrite[2], "value"),
+      textField(digitalWrite[2] === "HIGH" ? "/ 亮起" : "/ 熄滅")
+    ]);
   }
 
   const analogWrite = simple.match(/^analogWrite\s*\((.+),\s*(.+)\)$/);
   if (analogWrite) {
     collectPin(analogWrite[1], stats);
-    return block("pin", "PWM 輸出", `讓 ${analogWrite[1]} 輸出 PWM ${analogWrite[2]}`, false, "analogWrite");
+    return block("pin", "PWM 輸出", `讓 ${analogWrite[1]} 輸出 PWM ${analogWrite[2]}`, false, "analogWrite", [
+      textField("讓"),
+      expressionField(analogWrite[1]),
+      textField("輸出 PWM"),
+      expressionField(analogWrite[2])
+    ]);
   }
 
   const delayMatch = simple.match(/^delay(?:Microseconds)?\s*\((.+)\)$/);
   if (delayMatch) {
     const unit = simple.startsWith("delayMicroseconds") ? "微秒" : "毫秒";
-    return block("timing", "等待", `等待 ${delayMatch[1]} ${unit}`, false, simple.startsWith("delayMicroseconds") ? "delayMicroseconds" : "delay");
+    return block("timing", "等待", `等待 ${delayMatch[1]} ${unit}`, false, simple.startsWith("delayMicroseconds") ? "delayMicroseconds" : "delay", [
+      textField("等待"),
+      expressionField(delayMatch[1]),
+      textField(unit)
+    ]);
   }
 
   const serialBegin = simple.match(/^Serial\.begin\s*\((.+)\)$/);
@@ -182,10 +231,10 @@ function classifyLine(rawLine, stats) {
   if (serialPrint) return block("serial", "序列輸出", `顯示 ${serialPrint[2] || "空行"}`, false, serialPrint[1] === "println" ? "serialPrintln" : "serialPrint");
 
   const ifMatch = simple.match(/^if\s*\((.+)\)$/);
-  if (ifMatch) return block("control", "如果", convertCondition(ifMatch[1]), true, "if");
+  if (ifMatch) return block("control", "如果", convertCondition(ifMatch[1]), true, "if", conditionFields(ifMatch[1]));
 
   const elseIfMatch = simple.match(/^else\s+if\s*\((.+)\)$/);
-  if (elseIfMatch) return block("control", "否則如果", convertCondition(elseIfMatch[1]), true, "if");
+  if (elseIfMatch) return block("control", "否則如果", convertCondition(elseIfMatch[1]), true, "if", conditionFields(elseIfMatch[1]));
 
   if (/^else$/.test(simple)) return block("control", "否則", "前面條件不成立時", true, "if");
 
@@ -203,12 +252,68 @@ function classifyLine(rawLine, stats) {
 
   if (/\bmillis\s*\(\s*\)/.test(simple)) return block("timing", "計時", simple, false, "millis");
 
-  stats.warnings.push(`未標準化：${simple}`);
-  return block("custom", "自訂程式", simple, false, "custom");
+  const customLine = formatCustomStatement(rawSimple);
+  stats.warnings.push(`未標準化：${customLine}`);
+  return block("custom", "自訂程式", customLine, false, "custom");
 }
 
-function block(type, kind, label, opens = false, motoKey = "") {
-  return { type, kind, label, opens, moto: motoBlocklyBlocks[motoKey] || null, children: [] };
+function block(type, kind, label, opens = false, motoKey = "", fields = null) {
+  const moto = motoBlocklyBlocks[motoKey] || null;
+  return { type, kind, label, opens, moto, color: moto ? MOTO_COLORS[moto.hue] : null, fields, children: [] };
+}
+
+function formatCustomStatement(line) {
+  if (
+    line.endsWith(";") ||
+    line.startsWith("#") ||
+    line.endsWith("{") ||
+    line.endsWith("}") ||
+    /^else\b/.test(line) ||
+    /^void\s+\w+\s*\(/.test(line)
+  ) {
+    return line;
+  }
+  if (/[)=\]]$/.test(line)) return `${line};`;
+  return line;
+}
+
+function textField(value) {
+  return { type: "text", value };
+}
+
+function valueField(value, slotType = "variable") {
+  return { type: "value", value, slotType };
+}
+
+function expressionField(value) {
+  return { type: "expression", value: value.trim() };
+}
+
+function conditionFields(condition) {
+  const match = condition.match(/^(.+?)\s*(==|!=|>=|<=|>|<)\s*(.+)$/);
+  if (!match) return [expressionField(condition)];
+  return [
+    expressionField(convertReadCall(match[1].trim())),
+    valueField(translateOperator(match[2]), "operator"),
+    expressionField(match[3].trim())
+  ];
+}
+
+function convertReadCall(value) {
+  return value
+    .replace(/^digitalRead\s*\((.+)\)$/, "讀取 $1")
+    .replace(/^analogRead\s*\((.+)\)$/, "類比讀取 $1");
+}
+
+function translateOperator(operator) {
+  return {
+    "==": "等於",
+    "!=": "不等於",
+    ">=": "大於等於",
+    "<=": "小於等於",
+    ">": "大於",
+    "<": "小於"
+  }[operator] || operator;
 }
 
 function translateMode(mode) {
@@ -277,9 +382,11 @@ function renderNode(node) {
     title.querySelector(".section-name").textContent = isLoop ? "loop" : "setup";
     title.querySelector(".section-role").textContent = isLoop ? "重複執行區" : "開始設定區";
     title.title = node.moto ? node.moto.type : "";
+    if (node.color) title.style.setProperty("--block-color", node.color);
     wrap.append(title);
     const childStack = document.createElement("div");
     childStack.className = "stack function-body";
+    if (node.color) childStack.style.setProperty("--block-color", node.color);
     node.children.forEach((child) => childStack.append(renderNode(child)));
     wrap.append(childStack);
     return wrap;
@@ -287,9 +394,10 @@ function renderNode(node) {
 
   const blockEl = document.createElement("div");
   blockEl.className = `blockly-block ${node.type}${node.opens ? " has-mouth" : ""}`;
+  if (node.color) blockEl.style.setProperty("--block-color", node.color);
   blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span><span class="moto-tag"></span>`;
   blockEl.querySelector(".kind").textContent = node.kind;
-  blockEl.querySelector(".label").innerHTML = formatBlocklyLabel(node.label);
+  blockEl.querySelector(".label").innerHTML = node.fields ? renderFields(node.fields) : formatBlocklyLabel(node.label);
   const motoTag = blockEl.querySelector(".moto-tag");
   if (node.moto) {
     motoTag.textContent = node.moto.type;
@@ -302,6 +410,7 @@ function renderNode(node) {
   if (node.children?.length) {
     const mouth = document.createElement("div");
     mouth.className = `block-mouth ${node.type}`;
+    if (node.color) mouth.style.setProperty("--block-color", node.color);
     const mouthLabel = document.createElement("span");
     mouthLabel.className = "mouth-label";
     mouthLabel.textContent = node.kind.includes("否則") ? "else" : "do";
@@ -327,6 +436,31 @@ function formatBlocklyLabel(text) {
   }
   html += escapeHtml(text.slice(lastIndex));
   return html;
+}
+
+function renderFields(fields) {
+  return fields.map((field) => {
+    if (field.type === "text") return escapeHtml(field.value);
+    if (field.type === "value") return `<span class="slot ${field.slotType}">${escapeHtml(field.value)}</span>`;
+    if (field.type === "expression") return renderExpression(field.value);
+    return "";
+  }).join(" ");
+}
+
+function renderExpression(value) {
+  const expression = value.trim();
+  const binary = expression.match(/^(.+?)\s*([+\-*/])\s*(.+)$/);
+  if (binary) {
+    return `<span class="slot expression">${renderExpression(binary[1])}<span class="slot operator">${escapeHtml(binary[2])}</span>${renderExpression(binary[3])}</span>`;
+  }
+  const readMatch = expression.match(/^(讀取|類比讀取)\s+(.+)$/);
+  if (readMatch) {
+    return `<span class="slot expression">${escapeHtml(readMatch[1])} ${renderExpression(readMatch[2])}</span>`;
+  }
+  if (/^["']/.test(expression)) return `<span class="slot string">${escapeHtml(expression)}</span>`;
+  if (/^\d+(?:\.\d+)?$/.test(expression)) return `<span class="slot number">${escapeHtml(expression)}</span>`;
+  if (/^(HIGH|LOW|OUTPUT|INPUT_PULLUP|INPUT)$/.test(expression)) return `<span class="slot value">${escapeHtml(expression)}</span>`;
+  return `<span class="slot variable">${escapeHtml(expression)}</span>`;
 }
 
 function slotClass(token) {
@@ -360,7 +494,7 @@ function renderHandoff(stats) {
     ["語言", els.languageSelect.options[els.languageSelect.selectedIndex].textContent, languageHints[els.languageSelect.value]],
     ["板子", els.boardSelect.options[els.boardSelect.selectedIndex].textContent, boardHints[els.boardSelect.value]],
     ["腳位", pins.length ? pins.join("、") : "尚未辨識腳位", "若使用變數命名，建議採用 ledPin、buttonPin、pumpPin 等清楚名稱。"],
-    ["對應", "已啟用 motoBlockly 第一批對應", "目前標示常用入門積木 type，例如 inout_digital_write_v2、delay_custom、controls_if。"],
+    ["對應", "已啟用 motoBlockly 第一批對應", "使用官方 HUE 色號，並標示常用積木 type，例如 inout_digital_write_v2、delay_custom、controls_if。"],
     ["輸出", "可下載 SVG / PNG", "SVG 適合投影片與講義排版，PNG 適合快速貼圖。"],
     ["提醒", stats.warnings.length ? `${stats.warnings.length} 個自訂或未標準化語句` : "目前沒有未標準化語句", stats.warnings.slice(0, 2).join("；") || "可直接依照積木圖到 mBlock / Mixly / Arduino Blockly 拉積木。"]
   ];
@@ -403,7 +537,7 @@ function drawExportNodes(nodes, x, y, maxWidth) {
 function drawExportNode(node, x, y, maxWidth) {
   if (node.type === "function") {
     const isLoop = node.label.startsWith("loop");
-    const color = isLoop ? "#2f8f70" : "#8f5aa8";
+    const color = node.color || MOTO_COLORS.ADVANCED_HUE;
     const headW = isLoop ? 300 : 310;
     const bodyX = x + 48;
     const bodyY = y + 39;
@@ -436,7 +570,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const children = drawExportNodes(node.children, childX, mouthY + 12, maxWidth - 70);
     const mouthH = Math.max(58, children.height + 30);
     const mouthW = Math.max(520, Math.min(maxWidth, w + 80));
-    svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="#5b72c3" stroke="rgba(0,0,0,.16)"/>
+    svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="600" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>
       ${children.svg}`;
     height += mouthH - 2;
@@ -450,13 +584,14 @@ function svgBlockPath(x, y, w, h, color, hasTopNotch) {
 }
 
 function exportColorFor(node) {
+  if (node.color) return node.color;
   return {
-    pin: "#2f90b8",
-    timing: "#d28a24",
-    control: "#5b72c3",
-    serial: "#4aa382",
-    custom: "#c65c90"
-  }[node.type] || "#7c8580";
+    pin: MOTO_COLORS.INOUT_HUE,
+    timing: MOTO_COLORS.TIME_HUE,
+    control: MOTO_COLORS.LOGIC_HUE,
+    serial: MOTO_COLORS.SERIAL_HUE,
+    custom: MOTO_COLORS.PROCEDURES_HUE
+  }[node.type] || MOTO_COLORS.PROCEDURES_HUE;
 }
 
 function estimateExportWidth(label, motoType = "") {
