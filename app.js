@@ -14,6 +14,30 @@ const languageHints = {
   javascript: "JavaScript 轉換器已預留介面；目前仍以 Arduino C 規則解析。"
 };
 
+const motoBlocklyBlocks = {
+  setup: { type: "arduino_setup", category: "程式開始", display: "motoBlockly：程式開始" },
+  loop: { type: "arduino_setup", category: "程式開始", display: "motoBlockly：loop 區" },
+  variable: { type: "variables_set", category: "變量", display: "motoBlockly：變量" },
+  pinMode: { type: "inout_pinmode_val", category: "腳位設定", display: "motoBlockly：腳位模式" },
+  digitalWrite: { type: "inout_digital_write_v2", category: "數位輸出", display: "motoBlockly：數位輸出" },
+  digitalRead: { type: "inout_digital_read_v2", category: "數位讀取", display: "motoBlockly：數位讀取" },
+  analogRead: { type: "inout_analog_read_v2", category: "類比讀取", display: "motoBlockly：類比讀取" },
+  analogWrite: { type: "inout_analog_write_v2", category: "PWM 輸出", display: "motoBlockly：PWM 輸出" },
+  delay: { type: "delay_custom", category: "時間", display: "motoBlockly：等待" },
+  delayMicroseconds: { type: "delayMicroseconds_custom", category: "時間", display: "motoBlockly：微秒等待" },
+  millis: { type: "millis", category: "時間", display: "motoBlockly：millis" },
+  serialBegin: { type: "serial_setup", category: "串列埠", display: "motoBlockly：Serial 設定" },
+  serialPrint: { type: "serial_print", category: "串列埠", display: "motoBlockly：Serial print" },
+  serialPrintln: { type: "serial_printL", category: "串列埠", display: "motoBlockly：Serial println" },
+  if: { type: "controls_if", category: "邏輯", display: "motoBlockly：if" },
+  for: { type: "controls_for", category: "迴圈", display: "motoBlockly：for" },
+  while: { type: "while_do", category: "迴圈", display: "motoBlockly：while" },
+  tone: { type: "custom_tone_v1", category: "蜂鳴器", display: "motoBlockly：tone" },
+  noTone: { type: "no_tone", category: "蜂鳴器", display: "motoBlockly：noTone" },
+  servoMove: { type: "servo_move", category: "伺服馬達", display: "motoBlockly：伺服馬達" },
+  custom: { type: "custom_code", category: "自製積木", display: "motoBlockly：自訂程式" }
+};
+
 const exampleCode = `const int ledPin = 13;
 const int buttonPin = 2;
 
@@ -115,7 +139,8 @@ function classifyLine(rawLine, stats) {
 
   const functionMatch = simple.match(/^void\s+(setup|loop)\s*\(\s*\)/);
   if (functionMatch) {
-    return block("function", "程式區塊", functionMatch[1] === "setup" ? "setup() 開始設定" : "loop() 重複執行", true);
+    const fn = functionMatch[1];
+    return block("function", "程式區塊", fn === "setup" ? "setup() 開始設定" : "loop() 重複執行", true, fn === "setup" ? "setup" : "loop");
   }
 
   if (/^#include/.test(simple)) return block("meta", "函式庫", simple);
@@ -123,67 +148,67 @@ function classifyLine(rawLine, stats) {
   const declaration = simple.match(/^(?:const\s+)?(?:int|float|long|bool|boolean|byte|char|String)\s+([A-Za-z_]\w*)\s*=\s*(.+)$/);
   if (declaration) {
     collectPin(declaration[2], stats);
-    return block("custom", "變數", `設定 ${declaration[1]} 為 ${declaration[2]}`);
+    return block("custom", "變數", `設定 ${declaration[1]} 為 ${declaration[2]}`, false, "variable");
   }
 
   const pinMode = simple.match(/^pinMode\s*\((.+),\s*(INPUT_PULLUP|INPUT|OUTPUT)\)$/);
   if (pinMode) {
     collectPin(pinMode[1], stats);
-    return block("pin", "腳位模式", `把 ${pinMode[1]} 設為 ${translateMode(pinMode[2])}`);
+    return block("pin", "腳位模式", `把 ${pinMode[1]} 設為 ${translateMode(pinMode[2])}`, false, "pinMode");
   }
 
   const digitalWrite = simple.match(/^digitalWrite\s*\((.+),\s*(HIGH|LOW)\)$/);
   if (digitalWrite) {
     collectPin(digitalWrite[1], stats);
-    return block("pin", "數位輸出", `讓 ${digitalWrite[1]} ${digitalWrite[2] === "HIGH" ? "輸出 HIGH / 亮起" : "輸出 LOW / 熄滅"}`);
+    return block("pin", "數位輸出", `讓 ${digitalWrite[1]} ${digitalWrite[2] === "HIGH" ? "輸出 HIGH / 亮起" : "輸出 LOW / 熄滅"}`, false, "digitalWrite");
   }
 
   const analogWrite = simple.match(/^analogWrite\s*\((.+),\s*(.+)\)$/);
   if (analogWrite) {
     collectPin(analogWrite[1], stats);
-    return block("pin", "PWM 輸出", `讓 ${analogWrite[1]} 輸出 PWM ${analogWrite[2]}`);
+    return block("pin", "PWM 輸出", `讓 ${analogWrite[1]} 輸出 PWM ${analogWrite[2]}`, false, "analogWrite");
   }
 
   const delayMatch = simple.match(/^delay(?:Microseconds)?\s*\((.+)\)$/);
   if (delayMatch) {
     const unit = simple.startsWith("delayMicroseconds") ? "微秒" : "毫秒";
-    return block("timing", "等待", `等待 ${delayMatch[1]} ${unit}`);
+    return block("timing", "等待", `等待 ${delayMatch[1]} ${unit}`, false, simple.startsWith("delayMicroseconds") ? "delayMicroseconds" : "delay");
   }
 
   const serialBegin = simple.match(/^Serial\.begin\s*\((.+)\)$/);
-  if (serialBegin) return block("serial", "序列埠", `啟動 Serial，鮑率 ${serialBegin[1]}`);
+  if (serialBegin) return block("serial", "序列埠", `啟動 Serial，鮑率 ${serialBegin[1]}`, false, "serialBegin");
 
   const serialPrint = simple.match(/^Serial\.(print|println)\s*\((.*)\)$/);
-  if (serialPrint) return block("serial", "序列輸出", `顯示 ${serialPrint[2] || "空行"}`);
+  if (serialPrint) return block("serial", "序列輸出", `顯示 ${serialPrint[2] || "空行"}`, false, serialPrint[1] === "println" ? "serialPrintln" : "serialPrint");
 
   const ifMatch = simple.match(/^if\s*\((.+)\)$/);
-  if (ifMatch) return block("control", "如果", convertCondition(ifMatch[1]), true);
+  if (ifMatch) return block("control", "如果", convertCondition(ifMatch[1]), true, "if");
 
   const elseIfMatch = simple.match(/^else\s+if\s*\((.+)\)$/);
-  if (elseIfMatch) return block("control", "否則如果", convertCondition(elseIfMatch[1]), true);
+  if (elseIfMatch) return block("control", "否則如果", convertCondition(elseIfMatch[1]), true, "if");
 
-  if (/^else$/.test(simple)) return block("control", "否則", "前面條件不成立時", true);
+  if (/^else$/.test(simple)) return block("control", "否則", "前面條件不成立時", true, "if");
 
   const forMatch = simple.match(/^for\s*\((.+)\)$/);
-  if (forMatch) return block("control", "重複", `for：${forMatch[1]}`, true);
+  if (forMatch) return block("control", "重複", `for：${forMatch[1]}`, true, "for");
 
   const whileMatch = simple.match(/^while\s*\((.+)\)$/);
-  if (whileMatch) return block("control", "當成立時重複", convertCondition(whileMatch[1]), true);
+  if (whileMatch) return block("control", "當成立時重複", convertCondition(whileMatch[1]), true, "while");
 
   const toneMatch = simple.match(/^(tone|noTone)\s*\((.*)\)$/);
-  if (toneMatch) return block("pin", "蜂鳴器", `${toneMatch[1]}(${toneMatch[2]})`);
+  if (toneMatch) return block("pin", "蜂鳴器", `${toneMatch[1]}(${toneMatch[2]})`, false, toneMatch[1] === "noTone" ? "noTone" : "tone");
 
   const servoMatch = simple.match(/^([A-Za-z_]\w*)\.write\s*\((.+)\)$/);
-  if (servoMatch) return block("pin", "伺服馬達", `讓 ${servoMatch[1]} 轉到 ${servoMatch[2]} 度`);
+  if (servoMatch) return block("pin", "伺服馬達", `讓 ${servoMatch[1]} 轉到 ${servoMatch[2]} 度`, false, "servoMove");
 
-  if (/\bmillis\s*\(\s*\)/.test(simple)) return block("timing", "計時", simple);
+  if (/\bmillis\s*\(\s*\)/.test(simple)) return block("timing", "計時", simple, false, "millis");
 
   stats.warnings.push(`未標準化：${simple}`);
-  return block("custom", "自訂程式", simple);
+  return block("custom", "自訂程式", simple, false, "custom");
 }
 
-function block(type, kind, label, opens = false) {
-  return { type, kind, label, opens, children: [] };
+function block(type, kind, label, opens = false, motoKey = "") {
+  return { type, kind, label, opens, moto: motoBlocklyBlocks[motoKey] || null, children: [] };
 }
 
 function translateMode(mode) {
@@ -247,10 +272,11 @@ function renderNode(node) {
     const isLoop = node.label.startsWith("loop");
     wrap.className = `function-stack ${isLoop ? "loop-section" : "setup-section"}`;
     const title = document.createElement("div");
-    title.className = "section-label";
-    title.innerHTML = `<span class="section-name"></span><span class="section-role"></span>`;
-    title.querySelector(".section-name").textContent = isLoop ? "loop()" : "setup()";
+    title.className = "function-block-head";
+    title.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="section-name"></span><span class="section-role"></span>`;
+    title.querySelector(".section-name").textContent = isLoop ? "loop" : "setup";
     title.querySelector(".section-role").textContent = isLoop ? "重複執行區" : "開始設定區";
+    title.title = node.moto ? node.moto.type : "";
     wrap.append(title);
     const childStack = document.createElement("div");
     childStack.className = "stack function-body";
@@ -261,9 +287,16 @@ function renderNode(node) {
 
   const blockEl = document.createElement("div");
   blockEl.className = `blockly-block ${node.type}${node.opens ? " has-mouth" : ""}`;
-  blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span>`;
+  blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span><span class="moto-tag"></span>`;
   blockEl.querySelector(".kind").textContent = node.kind;
   blockEl.querySelector(".label").innerHTML = formatBlocklyLabel(node.label);
+  const motoTag = blockEl.querySelector(".moto-tag");
+  if (node.moto) {
+    motoTag.textContent = node.moto.type;
+    motoTag.title = node.moto.display;
+  } else {
+    motoTag.remove();
+  }
   wrap.append(blockEl);
 
   if (node.children?.length) {
@@ -309,14 +342,14 @@ function renderOutline(model) {
   flatten(model).forEach((item) => {
     const li = document.createElement("li");
     li.style.marginLeft = `${item.depth * 18}px`;
-    li.textContent = `${item.kind}：${item.label}`;
+    li.textContent = `${item.kind}：${item.label}${item.moto ? `（${item.moto.type}）` : ""}`;
     els.outlineView.append(li);
   });
 }
 
 function flatten(nodes, depth = 0) {
   return nodes.flatMap((node) => [
-    { kind: node.kind, label: node.label, depth },
+    { kind: node.kind, label: node.label, depth, moto: node.moto },
     ...flatten(node.children || [], depth + 1)
   ]);
 }
@@ -327,6 +360,7 @@ function renderHandoff(stats) {
     ["語言", els.languageSelect.options[els.languageSelect.selectedIndex].textContent, languageHints[els.languageSelect.value]],
     ["板子", els.boardSelect.options[els.boardSelect.selectedIndex].textContent, boardHints[els.boardSelect.value]],
     ["腳位", pins.length ? pins.join("、") : "尚未辨識腳位", "若使用變數命名，建議採用 ledPin、buttonPin、pumpPin 等清楚名稱。"],
+    ["對應", "已啟用 motoBlockly 第一批對應", "目前標示常用入門積木 type，例如 inout_digital_write_v2、delay_custom、controls_if。"],
     ["輸出", "可下載 SVG / PNG", "SVG 適合投影片與講義排版，PNG 適合快速貼圖。"],
     ["提醒", stats.warnings.length ? `${stats.warnings.length} 個自訂或未標準化語句` : "目前沒有未標準化語句", stats.warnings.slice(0, 2).join("；") || "可直接依照積木圖到 mBlock / Mixly / Arduino Blockly 拉積木。"]
   ];
@@ -343,44 +377,90 @@ function renderHandoff(stats) {
 }
 
 function buildExportSvg() {
-  const rows = flattenForExport(latestModel);
   const width = 1120;
-  const rowHeight = 46;
-  const height = Math.max(190, rows.length * rowHeight + 78);
-  const colors = { 腳位模式: "#4f88c6", 數位輸出: "#4f88c6", "PWM 輸出": "#4f88c6", 等待: "#d99b32", 如果: "#5f8fc2", 否則: "#5f8fc2", 否則如果: "#5f8fc2", 重複: "#5f8fc2", 當成立時重複: "#5f8fc2", 序列埠: "#55aa91", 序列輸出: "#55aa91" };
-  const rowMarkup = rows.map((row, index) => {
-    const y = 54 + index * rowHeight;
-    const x = 24 + row.depth * 34;
-    if (row.section) {
-      return `<text x="${x}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="17" font-weight="600" fill="#5f3c75">${escapeXml(row.label)}</text><line x1="${x}" y1="${y + 35}" x2="${width - 34}" y2="${y + 35}" stroke="#d9dfd7"/>`;
-    }
-    const w = Math.max(360, width - x - 34);
-    const color = colors[row.kind] || "#7c8580";
-    const label = escapeXml(`${row.kind}：${row.label}`);
-    return `<path d="M ${x + 7} ${y} H ${x + w} V ${y + 36} H ${x + 72} q -5 0 -8 5 q -3 5 -8 0 q -3 -5 -8 -5 H ${x + 7} q -7 0 -7 -7 V ${y + 7} q 0 -7 7 -7 Z" fill="${color}" stroke="rgba(0,0,0,.18)"/><text x="${x + 18}" y="${y + 24}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="400" fill="#fff">${label}</text>`;
-  }).join("");
+  const drawn = drawExportNodes(latestModel, 24, 54, width - 48);
+  const height = Math.max(220, drawn.height + 86);
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
     <defs><pattern id="dots" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="4" cy="4" r="1.2" fill="#cfd8d1"/></pattern></defs>
     <rect width="100%" height="100%" fill="#fbfcfa"/>
     <rect width="100%" height="100%" fill="url(#dots)"/>
     <text x="24" y="34" font-family="Segoe UI, Noto Sans TC, Arial" font-size="21" font-weight="600" fill="#5f3c75">Code to Blockly</text>
-    ${rowMarkup}
+    ${drawn.svg}
   </svg>`;
 }
 
-function flattenForExport(nodes, depth = 0) {
-  return nodes.flatMap((node) => {
-    if (node.type === "function") {
-      return [
-        { section: true, label: node.label, depth },
-        ...flattenForExport(node.children || [], depth + 1)
-      ];
-    }
-    return [
-      { kind: node.kind, label: node.label, depth },
-      ...flattenForExport(node.children || [], depth + 1)
-    ];
+function drawExportNodes(nodes, x, y, maxWidth) {
+  let svg = "";
+  let cursor = y;
+  nodes.forEach((node) => {
+    const drawn = drawExportNode(node, x, cursor, maxWidth);
+    svg += drawn.svg;
+    cursor += drawn.height + 12;
   });
+  return { svg, height: cursor - y };
+}
+
+function drawExportNode(node, x, y, maxWidth) {
+  if (node.type === "function") {
+    const isLoop = node.label.startsWith("loop");
+    const color = isLoop ? "#5f8fc2" : "#8f5aa8";
+    const headW = isLoop ? 300 : 310;
+    const bodyX = x + 48;
+    const bodyY = y + 39;
+    const children = drawExportNodes(node.children || [], bodyX, bodyY + 12, maxWidth - 86);
+    const bodyH = Math.max(64, children.height + 30);
+    const bodyW = Math.max(560, Math.min(maxWidth, 1000));
+    const title = isLoop ? "loop   重複執行區" : "setup   開始設定區";
+    const svg = `
+      ${svgBlockPath(x, y, headW, 40, color, false)}
+      <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="500" fill="#fff">${escapeXml(title)}</text>
+      <text x="${x + headW - 116}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="10" fill="rgba(255,255,255,.82)">${escapeXml(node.moto?.type || "")}</text>
+      <rect x="${x}" y="${bodyY}" width="${bodyW}" height="${bodyH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
+      ${children.svg}
+    `;
+    return { svg, height: 40 + bodyH };
+  }
+
+  const color = exportColorFor(node);
+  const label = `${node.kind}：${node.label}`;
+  const w = Math.max(360, Math.min(maxWidth, estimateExportWidth(label, node.moto?.type)));
+  let svg = `${svgBlockPath(x, y, w, 38, color, true)}
+    <text x="${x + 18}" y="${y + 24}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="400" fill="#fff">${escapeXml(label)}</text>
+    ${node.moto ? `<text x="${x + w - 190}" y="${y + 24}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="10" fill="rgba(255,255,255,.86)">${escapeXml(node.moto.type)}</text>` : ""}
+  `;
+  let height = 38;
+  if (node.children?.length) {
+    const mouthX = x;
+    const mouthY = y + 36;
+    const childX = x + 54;
+    const children = drawExportNodes(node.children, childX, mouthY + 12, maxWidth - 70);
+    const mouthH = Math.max(58, children.height + 30);
+    const mouthW = Math.max(520, Math.min(maxWidth, w + 80));
+    svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="#5f8fc2" stroke="rgba(0,0,0,.16)"/>
+      <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="600" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>
+      ${children.svg}`;
+    height += mouthH - 2;
+  }
+  return { svg, height };
+}
+
+function svgBlockPath(x, y, w, h, color, hasTopNotch) {
+  const notch = hasTopNotch ? `H ${x + 44} q 5 0 8 5 q 3 5 8 0 q 3 -5 8 -5` : "";
+  return `<path d="M ${x + 7} ${y} ${notch} H ${x + w} V ${y + h} H ${x + 74} q -5 0 -8 5 q -3 5 -8 0 q -3 -5 -8 -5 H ${x + 7} q -7 0 -7 -7 V ${y + 7} q 0 -7 7 -7 Z" fill="${color}" stroke="rgba(0,0,0,.18)"/>`;
+}
+
+function exportColorFor(node) {
+  return {
+    pin: "#4f88c6",
+    timing: "#d99b32",
+    control: "#5f8fc2",
+    serial: "#55aa91",
+    custom: "#c65c90"
+  }[node.type] || "#7c8580";
+}
+
+function estimateExportWidth(label, motoType = "") {
+  return 120 + label.length * 14 + (motoType ? Math.min(220, motoType.length * 7 + 36) : 0);
 }
 
 function escapeHtml(text) {

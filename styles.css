@@ -283,54 +283,52 @@ select {
 }
 
 .function-stack {
-  background: rgba(255, 255, 255, 0.72);
-  border: 1px solid #d9dfd7;
-  border-left: 6px solid var(--block-event);
+  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.18));
   margin-bottom: 18px;
-  padding: 10px 12px 14px;
   width: max-content;
 }
 
-.function-stack.loop-section {
-  border-left-color: var(--block-logic);
-}
-
-.section-label {
+.function-block-head {
   align-items: center;
-  color: #25342c;
+  background: var(--block-event);
+  border: 1px solid rgba(0, 0, 0, 0.16);
+  box-shadow:
+    inset 0 1px rgba(255, 255, 255, 0.22),
+    inset 0 -2px rgba(0, 0, 0, 0.12);
+  color: #fff;
   display: flex;
-  font-size: 15px;
-  gap: 10px;
-  margin: 0 0 10px;
-  min-width: 680px;
+  gap: 8px;
+  min-height: 40px;
+  min-width: 250px;
+  padding: 8px 16px 8px 14px;
+  position: relative;
+  width: max-content;
 }
 
-.section-name {
-  background: #f2edf5;
-  border: 1px solid #d7c5df;
-  color: #5f3c75;
-  font-weight: 700;
-  line-height: 1;
-  padding: 6px 9px;
+.loop-section .function-block-head {
+  background: var(--block-logic);
 }
 
-.loop-section .section-name {
-  background: #edf3f9;
-  border-color: #c7d8e8;
-  color: #345f8c;
-}
-
-.section-role {
-  color: var(--muted);
-  font-size: 13px;
-  font-weight: 500;
-}
-
-.section-label::after {
-  background: #d9dfd7;
+.function-block-head::after {
+  background: #fbfcfa;
+  border-radius: 8px 8px 0 0;
+  box-shadow: inset 0 1px rgba(0, 0, 0, 0.16);
+  bottom: -1px;
   content: "";
-  flex: 1 1 auto;
-  height: 1px;
+  height: 7px;
+  left: 76px;
+  position: absolute;
+  width: 28px;
+}
+
+.function-block-head .section-name {
+  font-weight: 700;
+}
+
+.function-block-head .section-role {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 13px;
+  font-weight: 400;
 }
 
 .blockly-block {
@@ -349,6 +347,22 @@ select {
   padding: 8px 15px 8px 14px;
   position: relative;
   width: max-content;
+}
+
+.blockly-block .moto-tag {
+  background: rgba(255, 255, 255, 0.18);
+  border: 1px solid rgba(255, 255, 255, 0.24);
+  color: rgba(255, 255, 255, 0.86);
+  flex: 0 0 auto;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 11px;
+  line-height: 1;
+  margin-left: 4px;
+  max-width: 210px;
+  overflow: hidden;
+  padding: 5px 7px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .blockly-block::before {
@@ -376,9 +390,20 @@ select {
 }
 
 .function-body {
-  filter: drop-shadow(0 2px 0 rgba(0, 0, 0, 0.18));
-  margin-left: 20px;
-  margin-top: 3px;
+  background: var(--block-event);
+  box-shadow:
+    inset 2px 0 rgba(255, 255, 255, 0.16),
+    inset -2px 0 rgba(0, 0, 0, 0.1);
+  gap: 3px;
+  margin-left: 0;
+  margin-top: -1px;
+  min-height: 54px;
+  min-width: 520px;
+  padding: 10px 14px 14px 50px;
+}
+
+.loop-section .function-body {
+  background: var(--block-logic);
 }
 
 .blockly-block .kind {
