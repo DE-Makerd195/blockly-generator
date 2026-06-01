@@ -597,7 +597,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const title = isLoop ? "loop   重複執行區" : "setup   開始設定區";
     const svg = `
       ${svgBlockPath(x, y, headW, 40, color, false)}
-      <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="400" fill="#101714">${escapeXml(title)}</text>
+      <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="400" fill="#fff">${escapeXml(title)}</text>
       <rect x="${x}" y="${bodyY}" width="${bodyW}" height="${bodyH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       ${children.svg}
     `;
@@ -611,7 +611,7 @@ function drawExportNode(node, x, y, maxWidth) {
   const labelLines = wrapSvgText(label, Math.max(14, Math.floor(labelWidth / 14)));
   const blockH = Math.max(38, 18 + labelLines.length * 18);
   let svg = `${svgBlockPath(x, y, w, blockH, color, true)}
-    ${svgTextLines(labelLines, x + 18, y + 24, 15, "#101714")}
+    ${svgTextLines(labelLines, x + 18, y + 24, 15, "#fff")}
   `;
   let height = blockH;
   if (node.children?.length) {
@@ -622,7 +622,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const mouthH = Math.max(36, children.height + 14);
     const mouthW = Math.max(340, Math.min(maxWidth, Math.max(w + 24, children.width + 70)));
     svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
-      <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="400" fill="#101714">${node.kind.includes("否則") ? "else" : "do"}</text>
+      <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="400" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>
       ${children.svg}`;
     height += mouthH - 2;
   }
