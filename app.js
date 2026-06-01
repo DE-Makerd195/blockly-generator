@@ -50,6 +50,14 @@ const motoBlocklyBlocks = {
   tone: { type: "custom_tone_v1", category: "蜂鳴器", hue: "BUZZER_HUE", display: "motoBlockly：tone" },
   noTone: { type: "no_tone", category: "蜂鳴器", hue: "BUZZER_HUE", display: "motoBlockly：noTone" },
   servoMove: { type: "servo_move", category: "伺服馬達", hue: "SERVO_HUE", display: "motoBlockly：伺服馬達" },
+  globalVariable: { type: "variables_declare_global", category: "變量", hue: "VARIABLES_HUE", display: "motoBlockly：宣告全域變數" },
+  localVariable: { type: "variables_declare", category: "變量", hue: "VARIABLES_HUE", display: "motoBlockly：宣告變數" },
+  assignment: { type: "variables_set", category: "變量", hue: "VARIABLES_HUE", display: "motoBlockly：變數賦值" },
+  arrayAssignment: { type: "lists_setIndex", category: "陣列", hue: "MATH_HUE", display: "motoBlockly：陣列指定位置賦值" },
+  procedureDef: { type: "procedures_defreturn", category: "副程式", hue: "PROCEDURES_HUE", display: "motoBlockly：副程式定義" },
+  procedureCall: { type: "procedures_callreturn", category: "副程式", hue: "PROCEDURES_HUE", display: "motoBlockly：副程式呼叫" },
+  returnValue: { type: "procedures_return", category: "副程式", hue: "PROCEDURES_HUE", display: "motoBlockly：回傳" },
+  eepromRead: { type: "eeprom_read", category: "記憶體(EEPROM)", hue: "INOUT_HUE", display: "motoBlockly：EEPROM 讀取" },
   remoteXYHandler: { type: "custom_code", category: "自製積木", hue: "PROCEDURES_HUE", display: "motoBlockly：RemoteXY Handler" },
   defineMotor: { type: "custom_code", category: "自製積木", hue: "PROCEDURES_HUE", display: "motoBlockly：足球小車腳位定義" },
   custom: { type: "custom_code", category: "自製積木", hue: "PROCEDURES_HUE", display: "motoBlockly：自訂程式" }
@@ -108,25 +116,118 @@ let latestStats = { blocks: 0, pins: new Set(), warnings: [] };
 let isSyncingScroll = false;
 
 function tokenize(code) {
-  return code
-    .replace(/\/\*[\s\S]*?\*\//g, "")
-    .split("\n")
-    .flatMap((line, index) => splitCodeLine(line, index + 1));
+  const tokens = [];
+  let inBlockComment = false;
+  code.split("\n").forEach((sourceLine, index) => {
+    const result = removeCommentsFromLine(sourceLine, inBlockComment);
+    inBlockComment = result.inBlockComment;
+    tokens.push(...splitCodeLine(result.line, index + 1));
+  });
+  return tokens;
+}
+
+function removeCommentsFromLine(sourceLine, initialBlockComment) {
+  let line = "";
+  let inBlockComment = initialBlockComment;
+  let quote = "";
+
+  for (let index = 0; index < sourceLine.length; index += 1) {
+    const char = sourceLine[index];
+    const next = sourceLine[index + 1];
+
+    if (inBlockComment) {
+      if (char === "*" && next === "/") {
+        inBlockComment = false;
+        index += 1;
+      }
+      continue;
+    }
+
+    if (quote) {
+      line += char;
+      if (char === "\\" && next) {
+        line += next;
+        index += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      line += char;
+      continue;
+    }
+
+    if (char === "/" && next === "*") {
+      inBlockComment = true;
+      index += 1;
+      continue;
+    }
+
+    if (char === "/" && next === "/") break;
+    line += char;
+  }
+
+  return { line, inBlockComment };
 }
 
 function splitCodeLine(sourceLine, lineNumber) {
-  const line = sourceLine.replace(/\/\/.*$/, "").trim();
+  const line = sourceLine.trim();
   const tokens = [];
   let current = "";
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let literalBraceDepth = 0;
+  let quote = "";
 
-  for (const char of line) {
-    if (char === "{" || char === "}") {
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    const next = line[index + 1];
+
+    if (quote) {
+      current += char;
+      if (char === "\\" && next) {
+        current += next;
+        index += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === "(") parenDepth += 1;
+    if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+    if (char === "[") bracketDepth += 1;
+    if (char === "]") bracketDepth = Math.max(0, bracketDepth - 1);
+
+    if (char === "{" && parenDepth === 0 && bracketDepth === 0 && /=$/.test(current.trim())) {
+      literalBraceDepth += 1;
+      current += char;
+      continue;
+    }
+
+    if (literalBraceDepth > 0) {
+      if (char === "{") literalBraceDepth += 1;
+      if (char === "}") literalBraceDepth = Math.max(0, literalBraceDepth - 1);
+      current += char;
+      continue;
+    }
+
+    if ((char === "{" || char === "}") && parenDepth === 0 && bracketDepth === 0) {
       if (current.trim()) tokens.push({ text: current.trim(), lineNumber });
       tokens.push({ text: char, lineNumber });
       current = "";
       continue;
     }
-    if (char === ";") {
+    if (char === ";" && parenDepth === 0 && bracketDepth === 0) {
       current += char;
       if (current.trim()) tokens.push({ text: current.trim(), lineNumber });
       current = "";
@@ -142,8 +243,8 @@ function splitCodeLine(sourceLine, lineNumber) {
 function parseCode(code) {
   const root = [];
   const stack = [{ type: "root", children: root }];
-  const stats = { blocks: 0, pins: new Set(), warnings: [] };
   const lines = tokenize(code);
+  const stats = { blocks: 0, pins: new Set(), warnings: [], functions: collectFunctions(lines) };
 
   lines.forEach(({ text, lineNumber }) => {
     if (text === "{") return;
@@ -152,8 +253,8 @@ function parseCode(code) {
       return;
     }
 
-    const node = classifyLine(text, stats, lineNumber);
     const current = stack[stack.length - 1];
+    const node = classifyLine(text, stats, lineNumber, current);
     current.children.push(node);
     stats.blocks += node.kind === "meta" ? 0 : 1;
 
@@ -170,7 +271,31 @@ function parseCode(code) {
   return { model: root, stats };
 }
 
-function classifyLine(rawLine, stats, lineNumber) {
+function collectFunctions(lines) {
+  const functions = new Map();
+  lines.forEach(({ text }) => {
+    const simple = text.trim().replace(/;$/, "").replace(/\s+/g, " ");
+    const match = simple.match(/^(?:static\s+)?([A-Za-z_]\w*(?:\s*\*)?|void)\s+([A-Za-z_]\w*)\s*\(([^)]*)\)$/);
+    if (match && !["if", "for", "while", "switch"].includes(match[2])) {
+      functions.set(match[2], {
+        returnType: match[1].replace(/\s+/g, " ").trim(),
+        params: parseParams(match[3])
+      });
+    }
+  });
+  return functions;
+}
+
+function parseParams(paramsText) {
+  const text = paramsText.trim();
+  if (!text || text === "void") return [];
+  return splitArguments(text).map((part) => {
+    const match = part.trim().match(/^(.+?)\s+([A-Za-z_]\w*)$/);
+    return match ? { type: match[1].trim(), name: match[2].trim() } : { type: "", name: part.trim() };
+  });
+}
+
+function classifyLine(rawLine, stats, lineNumber, context) {
   const rawSimple = rawLine.trim().replace(/\s+/g, " ");
   const line = rawSimple.replace(/;$/, "");
   const simple = line.replace(/\s+/g, " ");
@@ -181,6 +306,19 @@ function classifyLine(rawLine, stats, lineNumber) {
     return block("function", "程式區塊", fn === "setup" ? "setup() 開始設定" : "loop() 重複執行", true, fn === "setup" ? "setup" : "loop", null, lineNumber);
   }
 
+  const customFunctionMatch = simple.match(/^(?:static\s+)?([A-Za-z_]\w*(?:\s*\*)?|void)\s+([A-Za-z_]\w*)\s*\(([^)]*)\)$/);
+  if (customFunctionMatch && !["if", "for", "while", "switch"].includes(customFunctionMatch[2])) {
+    const returnType = customFunctionMatch[1].replace(/\s+/g, " ").trim();
+    const name = customFunctionMatch[2];
+    const params = parseParams(customFunctionMatch[3]);
+    return block("function", "副程式", `${name}(${params.map((param) => param.name).join(", ")})`, true, "procedureDef", [
+      textField("到"),
+      valueField(name, "variable"),
+      ...(params.length ? [textField("與"), ...params.flatMap((param) => [valueField(param.name, "variable"), valueField(param.type, "ioValue")])] : []),
+      ...(returnType !== "void" ? [textField("回傳"), valueField(returnType, "ioValue")] : [])
+    ], lineNumber);
+  }
+
   if (/^#include/.test(simple)) return block("custom", "函式庫", rawSimple, false, "custom", null, lineNumber);
   if (/^#define\s+MOTOR_/.test(simple)) return block("custom", "足球小車定義", rawSimple, false, "defineMotor", [
     textField("#define"),
@@ -189,14 +327,53 @@ function classifyLine(rawLine, stats, lineNumber) {
   ], lineNumber);
   if (/^RemoteXY_Handler\s*\(\s*\)$/.test(simple)) return block("custom", "自訂程式", formatCustomStatement(rawSimple), false, "remoteXYHandler", null, lineNumber);
 
-  const declaration = simple.match(/^(?:const\s+)?(?:int|float|long|bool|boolean|byte|char|String)\s+([A-Za-z_]\w*)\s*=\s*(.+)$/);
+  const declaration = simple.match(/^(?:const\s+)?(int|float|long|bool|boolean|byte|char|String)\s+([A-Za-z_]\w*)(?:\s*\[(.+)\])?\s*(?:=\s*(.+))?$/);
   if (declaration) {
-    collectPin(declaration[2], stats);
-    return block("custom", "變數", `設定 ${declaration[1]} 為 ${declaration[2]}`, false, "variable", [
-      textField("設定"),
-      valueField(declaration[1], "variable"),
+    const dataType = declaration[1];
+    const name = declaration[2];
+    const arraySize = declaration[3];
+    const value = declaration[4] || (arraySize ? "{}" : "");
+    collectPin(value, stats);
+    const isGlobal = context.type === "root";
+    return block("custom", isGlobal ? "全域變數" : "區域變數", `${isGlobal ? "宣告全域變數" : "宣告"} ${name} 為 ${dataType} 資料${arraySize ? `，陣列大小 ${arraySize}` : ""}${value ? `，資料 ${value}` : ""}`, false, isGlobal ? "globalVariable" : "localVariable", [
+      textField(isGlobal ? "宣告全域變數" : "宣告"),
+      valueField(name, "variable"),
       textField("為"),
-      expressionField(declaration[2])
+      valueField(dataType, "ioValue"),
+      ...(arraySize ? [textField("陣列大小"), expressionField(arraySize)] : []),
+      textField("資料"),
+      ...(value ? [expressionField(value)] : [])
+    ], lineNumber);
+  }
+
+  const returnMatch = simple.match(/^return\s+(.+)$/);
+  if (returnMatch) {
+    return block("custom", "回傳", `回傳 ${returnMatch[1]}`, false, "returnValue", [
+      textField("返回 當"),
+      expressionField(returnMatch[1])
+    ], lineNumber);
+  }
+
+  const arrayAssignment = simple.match(/^([A-Za-z_]\w*)\s*\[(.+)\]\s*=\s*(.+)$/);
+  if (arrayAssignment) {
+    return block("custom", "陣列賦值", `${arrayAssignment[1]} 第 ${arrayAssignment[2]} 項設為 ${arrayAssignment[3]}`, false, "arrayAssignment", [
+      textField("清單"),
+      valueField(arrayAssignment[1], "variable"),
+      textField("設定 #"),
+      expressionField(arrayAssignment[2]),
+      textField("為"),
+      expressionField(arrayAssignment[3])
+    ], lineNumber);
+  }
+
+  const assignment = simple.match(/^([A-Za-z_]\w*)\s*=\s*(.+)$/);
+  if (assignment && !/[=!<>]=/.test(assignment[2])) {
+    collectPin(assignment[2], stats);
+    return block("custom", "變數賦值", `設定 ${assignment[1]} 為 ${assignment[2]}`, false, "assignment", [
+      textField("賦值"),
+      valueField(assignment[1], "variable"),
+      textField("成"),
+      expressionField(assignment[2])
     ], lineNumber);
   }
 
@@ -259,7 +436,7 @@ function classifyLine(rawLine, stats, lineNumber) {
   if (/^else$/.test(simple)) return block("control", "否則", "前面條件不成立時", true, "if", null, lineNumber);
 
   const forMatch = simple.match(/^for\s*\((.+)\)$/);
-  if (forMatch) return block("control", "重複", `for：${forMatch[1]}`, true, "for", null, lineNumber);
+  if (forMatch) return block("control", "循環計數", formatForLabel(forMatch[1]), true, "for", forFields(forMatch[1]), lineNumber);
 
   const whileMatch = simple.match(/^while\s*\((.+)\)$/);
   if (whileMatch) return block("control", "當成立時重複", convertCondition(whileMatch[1]), true, "while", null, lineNumber);
@@ -272,6 +449,15 @@ function classifyLine(rawLine, stats, lineNumber) {
 
   if (/\bmillis\s*\(\s*\)/.test(simple)) return block("timing", "計時", simple, false, "millis", null, lineNumber);
 
+  const functionCall = simple.match(/^([A-Za-z_]\w*)\s*\((.*)\)$/);
+  if (functionCall && stats.functions.has(functionCall[1])) {
+    const args = splitArguments(functionCall[2]);
+    return block("custom", "副程式呼叫", `${functionCall[1]}(${args.join(", ")})`, false, "procedureCall", [
+      valueField(functionCall[1], "variable"),
+      ...(args.length ? [textField("與"), ...args.map((arg) => expressionField(arg))] : [])
+    ], lineNumber);
+  }
+
   const customLine = formatCustomStatement(rawSimple);
   stats.warnings.push(`未標準化：${customLine}`);
   return block("custom", "自訂程式", customLine, false, "custom", null, lineNumber);
@@ -280,6 +466,51 @@ function classifyLine(rawLine, stats, lineNumber) {
 function block(type, kind, label, opens = false, motoKey = "", fields = null, lineNumber = null) {
   const moto = motoBlocklyBlocks[motoKey] || null;
   return { type, kind, label, opens, moto, color: moto ? MOTO_COLORS[moto.hue] : null, fields, lineNumber, children: [] };
+}
+
+function splitArguments(argsText) {
+  const args = [];
+  let current = "";
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let quote = "";
+
+  for (let index = 0; index < argsText.length; index += 1) {
+    const char = argsText[index];
+    const next = argsText[index + 1];
+
+    if (quote) {
+      current += char;
+      if (char === "\\" && next) {
+        current += next;
+        index += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+
+    if (char === "\"" || char === "'") {
+      quote = char;
+      current += char;
+      continue;
+    }
+
+    if (char === "(") parenDepth += 1;
+    if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+    if (char === "[") bracketDepth += 1;
+    if (char === "]") bracketDepth = Math.max(0, bracketDepth - 1);
+
+    if (char === "," && parenDepth === 0 && bracketDepth === 0) {
+      if (current.trim()) args.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  if (current.trim()) args.push(current.trim());
+  return args;
 }
 
 function formatCustomStatement(line) {
@@ -295,6 +526,91 @@ function formatCustomStatement(line) {
   }
   if (/[)=\]]$/.test(line)) return `${line};`;
   return line;
+}
+
+function formatForLabel(statement) {
+  const parsed = parseForStatement(statement);
+  if (!parsed) return `for：${statement}`;
+  return `${parsed.variable} 從 ${parsed.start} 到 ${parsed.end}，每次增加 ${parsed.step}`;
+}
+
+function forFields(statement) {
+  const parsed = parseForStatement(statement);
+  if (!parsed) return [expressionField(statement)];
+  return [
+    textField("循環計數"),
+    valueField(parsed.variable, "variable"),
+    textField("從"),
+    expressionField(parsed.start),
+    textField("到"),
+    expressionField(parsed.end),
+    textField("每次增加"),
+    expressionField(parsed.step)
+  ];
+}
+
+function parseForStatement(statement) {
+  const parts = splitForParts(statement);
+  if (parts.length !== 3) return null;
+
+  const init = parts[0].match(/^(?:(?:int|long|byte|float)\s+)?([A-Za-z_]\w*)\s*=\s*(.+)$/);
+  const condition = parts[1].match(/^([A-Za-z_]\w*)\s*(<=|<|>=|>)\s*(.+)$/);
+  const update = parts[2].match(/^([A-Za-z_]\w*)\s*(?:\+\+|--|\+=\s*(.+)|-=\s*(.+)|=\s*\1\s*([+\-])\s*(.+))$/);
+  if (!init || !condition || !update || init[1] !== condition[1] || init[1] !== update[1]) return null;
+
+  let step = "1";
+  if (update[0].includes("--")) step = "-1";
+  else if (update[2]) step = update[2];
+  else if (update[3]) step = `-${update[3]}`;
+  else if (update[4] === "-") step = `-${update[5]}`;
+  else if (update[5]) step = update[5];
+
+  return {
+    variable: init[1],
+    start: init[2].trim(),
+    end: condition[3].trim(),
+    step: step.trim()
+  };
+}
+
+function splitForParts(statement) {
+  const parts = [];
+  let current = "";
+  let parenDepth = 0;
+  let bracketDepth = 0;
+  let quote = "";
+
+  for (let index = 0; index < statement.length; index += 1) {
+    const char = statement[index];
+    const next = statement[index + 1];
+    if (quote) {
+      current += char;
+      if (char === "\\" && next) {
+        current += next;
+        index += 1;
+        continue;
+      }
+      if (char === quote) quote = "";
+      continue;
+    }
+    if (char === "\"" || char === "'") {
+      quote = char;
+      current += char;
+      continue;
+    }
+    if (char === "(") parenDepth += 1;
+    if (char === ")") parenDepth = Math.max(0, parenDepth - 1);
+    if (char === "[") bracketDepth += 1;
+    if (char === "]") bracketDepth = Math.max(0, bracketDepth - 1);
+    if (char === ";" && parenDepth === 0 && bracketDepth === 0) {
+      parts.push(current.trim());
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+  if (current.trim()) parts.push(current.trim());
+  return parts;
 }
 
 function textField(value) {
@@ -415,16 +731,20 @@ function renderNode(node) {
   const wrap = document.createElement("div");
   if (node.type === "function") {
     const isLoop = node.label.startsWith("loop");
-    wrap.className = `function-stack ${isLoop ? "loop-section" : "setup-section"}`;
+    const isProcedure = node.moto?.type?.startsWith("procedures_");
+    wrap.className = `function-stack ${isLoop ? "loop-section" : "setup-section"}${isProcedure ? " procedure-section" : ""}`;
     const title = document.createElement("div");
     title.className = "function-block-head";
     if (node.lineNumber) {
       title.dataset.line = String(node.lineNumber);
       wrap.dataset.line = String(node.lineNumber);
     }
-    title.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="section-name"></span><span class="section-role"></span>`;
-    title.querySelector(".section-name").textContent = isLoop ? "loop" : "setup";
-    title.querySelector(".section-role").textContent = isLoop ? "重複執行區" : "開始設定區";
+    title.innerHTML = `<span class="line-badge"></span><span class="gear" aria-hidden="true"></span><span class="section-name"></span><span class="section-role"></span>`;
+    title.querySelector(".line-badge").textContent = node.lineNumber ? String(node.lineNumber) : "";
+    title.querySelector(".section-name").textContent = isProcedure ? "副程式" : (isLoop ? "loop" : "setup");
+    title.querySelector(".section-role").innerHTML = node.fields
+      ? renderFields(node.fields)
+      : (isLoop ? "重複執行區" : "開始設定區");
     title.title = node.moto ? node.moto.type : "";
     if (node.color) title.style.setProperty("--block-color", node.color);
     wrap.append(title);
@@ -441,7 +761,7 @@ function renderNode(node) {
   if (node.lineNumber) blockEl.dataset.line = String(node.lineNumber);
   if (node.color) blockEl.style.setProperty("--block-color", node.color);
   blockEl.innerHTML = `<span class="line-badge"></span><span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span>`;
-  blockEl.querySelector(".line-badge").textContent = node.lineNumber ? `L${node.lineNumber}` : "";
+  blockEl.querySelector(".line-badge").textContent = node.lineNumber ? String(node.lineNumber) : "";
   blockEl.querySelector(".kind").textContent = node.kind;
   blockEl.querySelector(".label").innerHTML = node.fields
     ? renderFields(node.fields)
@@ -456,7 +776,7 @@ function renderNode(node) {
     if (node.color) mouth.style.setProperty("--block-color", node.color);
     const mouthLabel = document.createElement("span");
     mouthLabel.className = "mouth-label";
-    mouthLabel.textContent = node.kind.includes("否則") ? "else" : "do";
+    mouthLabel.textContent = node.kind.includes("否則") ? "否則" : "執行";
     mouth.append(mouthLabel);
     const children = document.createElement("div");
     children.className = "child-stack";
@@ -492,6 +812,10 @@ function renderFields(fields) {
 
 function renderExpression(value) {
   const expression = value.trim();
+  const eepromRead = expression.match(/^EEPROM\.read\s*\((.+)\)$/);
+  if (eepromRead) {
+    return `<span class="slot expression">記憶體(EEPROM) 讀出位址 ${renderExpression(eepromRead[1])}</span>`;
+  }
   const binary = expression.match(/^(.+?)\s*([+\-*/])\s*(.+)$/);
   if (binary) {
     return `<span class="slot expression">${renderExpression(binary[1])}<span class="slot operator">${escapeHtml(binary[2])}</span>${renderExpression(binary[3])}</span>`;
@@ -523,7 +847,7 @@ function renderOutline(model) {
     if (item.lineNumber) li.dataset.line = String(item.lineNumber);
     li.style.paddingLeft = `${item.depth * 18}px`;
     li.innerHTML = `<span class="outline-line-code"></span><span class="outline-text"></span>`;
-    li.querySelector(".outline-line-code").textContent = item.lineNumber ? `L${item.lineNumber}` : "";
+    li.querySelector(".outline-line-code").textContent = item.lineNumber ? String(item.lineNumber) : "";
     li.querySelector(".outline-text").textContent = `${item.kind}：${item.label}${item.moto ? `（${item.moto.type}）` : ""}`;
     els.outlineView.append(li);
   });
@@ -587,14 +911,15 @@ function drawExportNodes(nodes, x, y, maxWidth) {
 function drawExportNode(node, x, y, maxWidth) {
   if (node.type === "function") {
     const isLoop = node.label.startsWith("loop");
+    const isProcedure = node.moto?.type?.startsWith("procedures_");
     const color = node.color || MOTO_COLORS.ADVANCED_HUE;
-    const headW = isLoop ? 300 : 310;
-  const bodyX = x + 48;
+    const headW = isProcedure ? Math.min(maxWidth, 520) : (isLoop ? 300 : 310);
+    const bodyX = x + 48;
     const bodyY = y + 39;
     const children = drawExportNodes(node.children || [], bodyX, bodyY + 12, maxWidth - 86);
     const bodyH = Math.max(42, children.height + 16);
     const bodyW = Math.max(380, Math.min(maxWidth, children.width + 86));
-    const title = isLoop ? "loop   重複執行區" : "setup   開始設定區";
+    const title = isProcedure ? `副程式   ${node.label}` : (isLoop ? "loop   重複執行區" : "setup   開始設定區");
     const svg = `
       ${svgBlockPath(x, y, headW, 40, color, false)}
       <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="400" fill="#fff">${escapeXml(title)}</text>
