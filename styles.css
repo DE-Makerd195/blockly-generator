@@ -23,6 +23,10 @@
   --block-custom: #FFA500;
   --gray-block: #eef1ee;
   --shadow: 0 16px 42px rgba(26, 38, 31, 0.1);
+  --code-font: Consolas, "Courier New", monospace;
+  --code-font-size: 14px;
+  --code-line-height: 21px;
+  --code-pad-y: 14px;
   font-family: "Segoe UI", "Noto Sans TC", Arial, sans-serif;
 }
 
@@ -232,25 +236,32 @@ select {
   background: #0c1210;
   border-right: 1px solid #26362f;
   color: #8aa098;
-  font-family: Consolas, "Courier New", monospace;
-  font-size: 14px;
-  line-height: 1.5;
+  font-family: var(--code-font);
+  font-size: var(--code-font-size);
+  line-height: var(--code-line-height);
   overflow: hidden;
-  padding: 14px 8px;
+  padding: var(--code-pad-y) 8px;
   text-align: right;
   user-select: none;
 }
 
 .code-line-numbers span {
   display: block;
-  min-height: 21px;
+  height: var(--code-line-height);
+  line-height: var(--code-line-height);
 }
 
 #codeInput {
   border: 0;
+  font-family: var(--code-font);
+  font-size: var(--code-font-size);
   height: 100%;
+  line-height: var(--code-line-height);
   min-height: 0;
+  padding-bottom: var(--code-pad-y);
+  padding-top: var(--code-pad-y);
   resize: none;
+  white-space: pre;
 }
 
 #promptTemplate {
