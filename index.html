@@ -51,7 +51,10 @@
               </label>
             </div>
           </div>
-          <textarea id="codeInput" spellcheck="false" aria-label="貼上原始程式碼"></textarea>
+          <div class="code-editor-wrap">
+            <div id="codeLineNumbers" class="code-line-numbers" aria-hidden="true"></div>
+            <textarea id="codeInput" spellcheck="false" aria-label="貼上原始程式碼"></textarea>
+          </div>
           <div class="analysis-strip">
             <div>
               <span class="metric-label">辨識積木</span>
@@ -75,6 +78,10 @@
               <p id="boardHint">Arduino Uno / Nano 內建 LED 通常是 D13。</p>
             </div>
             <div class="view-tabs" role="tablist" aria-label="預覽模式">
+              <label class="sync-toggle" title="依來源行號同步左右捲動">
+                <input id="syncScroll" type="checkbox" checked />
+                <span>同步</span>
+              </label>
               <button class="active" type="button" data-view="blocks">積木</button>
               <button type="button" data-view="outline">清單</button>
             </div>

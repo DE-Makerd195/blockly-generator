@@ -89,6 +89,7 @@ const els = {
   languageSelect: document.querySelector("#languageSelect"),
   boardSelect: document.querySelector("#boardSelect"),
   boardHint: document.querySelector("#boardHint"),
+  codeLineNumbers: document.querySelector("#codeLineNumbers"),
   blockCanvas: document.querySelector("#blockCanvas"),
   outlineView: document.querySelector("#outlineView"),
   blockCount: document.querySelector("#blockCount"),
@@ -96,6 +97,7 @@ const els = {
   warningCount: document.querySelector("#warningCount"),
   handoffList: document.querySelector("#handoffList"),
   promptTemplate: document.querySelector("#promptTemplate"),
+  syncScroll: document.querySelector("#syncScroll"),
   loadExample: document.querySelector("#loadExample"),
   exportSvg: document.querySelector("#exportSvg"),
   exportPng: document.querySelector("#exportPng")
@@ -103,20 +105,38 @@ const els = {
 
 let latestModel = [];
 let latestStats = { blocks: 0, pins: new Set(), warnings: [] };
+let isSyncingScroll = false;
 
 function tokenize(code) {
   return code
     .replace(/\/\*[\s\S]*?\*\//g, "")
     .split("\n")
-    .map((line) => line.replace(/\/\/.*$/, "").trim())
-    .filter(Boolean)
-    .join("\n")
-    .replace(/\{/g, "\n{\n")
-    .replace(/\}/g, "\n}\n")
-    .replace(/;/g, ";\n")
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean);
+    .flatMap((line, index) => splitCodeLine(line, index + 1));
+}
+
+function splitCodeLine(sourceLine, lineNumber) {
+  const line = sourceLine.replace(/\/\/.*$/, "").trim();
+  const tokens = [];
+  let current = "";
+
+  for (const char of line) {
+    if (char === "{" || char === "}") {
+      if (current.trim()) tokens.push({ text: current.trim(), lineNumber });
+      tokens.push({ text: char, lineNumber });
+      current = "";
+      continue;
+    }
+    if (char === ";") {
+      current += char;
+      if (current.trim()) tokens.push({ text: current.trim(), lineNumber });
+      current = "";
+      continue;
+    }
+    current += char;
+  }
+
+  if (current.trim()) tokens.push({ text: current.trim(), lineNumber });
+  return tokens;
 }
 
 function parseCode(code) {
@@ -125,14 +145,14 @@ function parseCode(code) {
   const stats = { blocks: 0, pins: new Set(), warnings: [] };
   const lines = tokenize(code);
 
-  lines.forEach((line) => {
-    if (line === "{") return;
-    if (line === "}") {
+  lines.forEach(({ text, lineNumber }) => {
+    if (text === "{") return;
+    if (text === "}") {
       if (stack.length > 1) stack.pop();
       return;
     }
 
-    const node = classifyLine(line, stats);
+    const node = classifyLine(text, stats, lineNumber);
     const current = stack[stack.length - 1];
     current.children.push(node);
     stats.blocks += node.kind === "meta" ? 0 : 1;
@@ -150,7 +170,7 @@ function parseCode(code) {
   return { model: root, stats };
 }
 
-function classifyLine(rawLine, stats) {
+function classifyLine(rawLine, stats, lineNumber) {
   const rawSimple = rawLine.trim().replace(/\s+/g, " ");
   const line = rawSimple.replace(/;$/, "");
   const simple = line.replace(/\s+/g, " ");
@@ -158,16 +178,16 @@ function classifyLine(rawLine, stats) {
   const functionMatch = simple.match(/^void\s+(setup|loop)\s*\(\s*\)/);
   if (functionMatch) {
     const fn = functionMatch[1];
-    return block("function", "程式區塊", fn === "setup" ? "setup() 開始設定" : "loop() 重複執行", true, fn === "setup" ? "setup" : "loop");
+    return block("function", "程式區塊", fn === "setup" ? "setup() 開始設定" : "loop() 重複執行", true, fn === "setup" ? "setup" : "loop", null, lineNumber);
   }
 
-  if (/^#include/.test(simple)) return block("custom", "函式庫", rawSimple, false, "custom");
+  if (/^#include/.test(simple)) return block("custom", "函式庫", rawSimple, false, "custom", null, lineNumber);
   if (/^#define\s+MOTOR_/.test(simple)) return block("custom", "足球小車定義", rawSimple, false, "defineMotor", [
     textField("#define"),
     valueField(simple.split(/\s+/)[1], "variable"),
     expressionField(simple.split(/\s+/).slice(2).join(" "))
-  ]);
-  if (/^RemoteXY_Handler\s*\(\s*\)$/.test(simple)) return block("custom", "自訂程式", formatCustomStatement(rawSimple), false, "remoteXYHandler");
+  ], lineNumber);
+  if (/^RemoteXY_Handler\s*\(\s*\)$/.test(simple)) return block("custom", "自訂程式", formatCustomStatement(rawSimple), false, "remoteXYHandler", null, lineNumber);
 
   const declaration = simple.match(/^(?:const\s+)?(?:int|float|long|bool|boolean|byte|char|String)\s+([A-Za-z_]\w*)\s*=\s*(.+)$/);
   if (declaration) {
@@ -177,7 +197,7 @@ function classifyLine(rawLine, stats) {
       valueField(declaration[1], "variable"),
       textField("為"),
       expressionField(declaration[2])
-    ]);
+    ], lineNumber);
   }
 
   const pinMode = simple.match(/^pinMode\s*\((.+),\s*(INPUT_PULLUP|INPUT|OUTPUT)\)$/);
@@ -188,7 +208,7 @@ function classifyLine(rawLine, stats) {
       expressionField(pinMode[1]),
       textField("設為"),
       valueField(translateMode(pinMode[2]), "ioValue")
-    ]);
+    ], lineNumber);
   }
 
   const digitalWrite = simple.match(/^digitalWrite\s*\((.+),\s*(HIGH|LOW)\)$/);
@@ -200,7 +220,7 @@ function classifyLine(rawLine, stats) {
       textField("輸出"),
       valueField(translateLevel(digitalWrite[2]), "ioValue"),
       textField(digitalWrite[2] === "HIGH" ? "/ 亮起" : "/ 熄滅")
-    ]);
+    ], lineNumber);
   }
 
   const analogWrite = simple.match(/^analogWrite\s*\((.+),\s*(.+)\)$/);
@@ -211,7 +231,7 @@ function classifyLine(rawLine, stats) {
       expressionField(analogWrite[1]),
       textField("輸出 PWM"),
       expressionField(analogWrite[2])
-    ]);
+    ], lineNumber);
   }
 
   const delayMatch = simple.match(/^delay(?:Microseconds)?\s*\((.+)\)$/);
@@ -221,45 +241,45 @@ function classifyLine(rawLine, stats) {
       textField("等待"),
       expressionField(delayMatch[1]),
       textField(unit)
-    ]);
+    ], lineNumber);
   }
 
   const serialBegin = simple.match(/^Serial\.begin\s*\((.+)\)$/);
-  if (serialBegin) return block("serial", "序列埠", `啟動 Serial，鮑率 ${serialBegin[1]}`, false, "serialBegin");
+  if (serialBegin) return block("serial", "序列埠", `啟動 Serial，鮑率 ${serialBegin[1]}`, false, "serialBegin", null, lineNumber);
 
   const serialPrint = simple.match(/^Serial\.(print|println)\s*\((.*)\)$/);
-  if (serialPrint) return block("serial", "序列輸出", `顯示 ${serialPrint[2] || "空行"}`, false, serialPrint[1] === "println" ? "serialPrintln" : "serialPrint");
+  if (serialPrint) return block("serial", "序列輸出", `顯示 ${serialPrint[2] || "空行"}`, false, serialPrint[1] === "println" ? "serialPrintln" : "serialPrint", null, lineNumber);
 
   const ifMatch = simple.match(/^if\s*\((.+)\)$/);
-  if (ifMatch) return block("control", "如果", convertCondition(ifMatch[1]), true, "if", conditionFields(ifMatch[1]));
+  if (ifMatch) return block("control", "如果", convertCondition(ifMatch[1]), true, "if", conditionFields(ifMatch[1]), lineNumber);
 
   const elseIfMatch = simple.match(/^else\s+if\s*\((.+)\)$/);
-  if (elseIfMatch) return block("control", "否則如果", convertCondition(elseIfMatch[1]), true, "if", conditionFields(elseIfMatch[1]));
+  if (elseIfMatch) return block("control", "否則如果", convertCondition(elseIfMatch[1]), true, "if", conditionFields(elseIfMatch[1]), lineNumber);
 
-  if (/^else$/.test(simple)) return block("control", "否則", "前面條件不成立時", true, "if");
+  if (/^else$/.test(simple)) return block("control", "否則", "前面條件不成立時", true, "if", null, lineNumber);
 
   const forMatch = simple.match(/^for\s*\((.+)\)$/);
-  if (forMatch) return block("control", "重複", `for：${forMatch[1]}`, true, "for");
+  if (forMatch) return block("control", "重複", `for：${forMatch[1]}`, true, "for", null, lineNumber);
 
   const whileMatch = simple.match(/^while\s*\((.+)\)$/);
-  if (whileMatch) return block("control", "當成立時重複", convertCondition(whileMatch[1]), true, "while");
+  if (whileMatch) return block("control", "當成立時重複", convertCondition(whileMatch[1]), true, "while", null, lineNumber);
 
   const toneMatch = simple.match(/^(tone|noTone)\s*\((.*)\)$/);
-  if (toneMatch) return block("pin", "蜂鳴器", `${toneMatch[1]}(${toneMatch[2]})`, false, toneMatch[1] === "noTone" ? "noTone" : "tone");
+  if (toneMatch) return block("pin", "蜂鳴器", `${toneMatch[1]}(${toneMatch[2]})`, false, toneMatch[1] === "noTone" ? "noTone" : "tone", null, lineNumber);
 
   const servoMatch = simple.match(/^([A-Za-z_]\w*)\.write\s*\((.+)\)$/);
-  if (servoMatch) return block("pin", "伺服馬達", `讓 ${servoMatch[1]} 轉到 ${servoMatch[2]} 度`, false, "servoMove");
+  if (servoMatch) return block("pin", "伺服馬達", `讓 ${servoMatch[1]} 轉到 ${servoMatch[2]} 度`, false, "servoMove", null, lineNumber);
 
-  if (/\bmillis\s*\(\s*\)/.test(simple)) return block("timing", "計時", simple, false, "millis");
+  if (/\bmillis\s*\(\s*\)/.test(simple)) return block("timing", "計時", simple, false, "millis", null, lineNumber);
 
   const customLine = formatCustomStatement(rawSimple);
   stats.warnings.push(`未標準化：${customLine}`);
-  return block("custom", "自訂程式", customLine, false, "custom");
+  return block("custom", "自訂程式", customLine, false, "custom", null, lineNumber);
 }
 
-function block(type, kind, label, opens = false, motoKey = "", fields = null) {
+function block(type, kind, label, opens = false, motoKey = "", fields = null, lineNumber = null) {
   const moto = motoBlocklyBlocks[motoKey] || null;
-  return { type, kind, label, opens, moto, color: moto ? MOTO_COLORS[moto.hue] : null, fields, children: [] };
+  return { type, kind, label, opens, moto, color: moto ? MOTO_COLORS[moto.hue] : null, fields, lineNumber, children: [] };
 }
 
 function formatCustomStatement(line) {
@@ -356,6 +376,7 @@ function render() {
   const result = parseCode(els.codeInput.value);
   latestModel = result.model;
   latestStats = result.stats;
+  updateLineNumbers();
   els.boardHint.textContent = `${languageHints[els.languageSelect.value]} ${boardHints[els.boardSelect.value]}`;
   els.blockCount.textContent = String(result.stats.blocks);
   els.pinCount.textContent = String(result.stats.pins.size);
@@ -363,6 +384,16 @@ function render() {
   renderBlocks(result.model);
   renderOutline(result.model);
   renderHandoff(result.stats);
+}
+
+function updateLineNumbers() {
+  const lineCount = Math.max(1, els.codeInput.value.split("\n").length);
+  els.codeLineNumbers.innerHTML = Array.from({ length: lineCount }, (_, index) => `<span data-line="${index + 1}">${index + 1}</span>`).join("");
+  syncLineNumberScroll();
+}
+
+function syncLineNumberScroll() {
+  els.codeLineNumbers.scrollTop = els.codeInput.scrollTop;
 }
 
 function renderBlocks(model) {
@@ -387,6 +418,10 @@ function renderNode(node) {
     wrap.className = `function-stack ${isLoop ? "loop-section" : "setup-section"}`;
     const title = document.createElement("div");
     title.className = "function-block-head";
+    if (node.lineNumber) {
+      title.dataset.line = String(node.lineNumber);
+      wrap.dataset.line = String(node.lineNumber);
+    }
     title.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="section-name"></span><span class="section-role"></span>`;
     title.querySelector(".section-name").textContent = isLoop ? "loop" : "setup";
     title.querySelector(".section-role").textContent = isLoop ? "重複執行區" : "開始設定區";
@@ -403,8 +438,10 @@ function renderNode(node) {
 
   const blockEl = document.createElement("div");
   blockEl.className = `blockly-block ${node.type}${node.opens ? " has-mouth" : ""}`;
+  if (node.lineNumber) blockEl.dataset.line = String(node.lineNumber);
   if (node.color) blockEl.style.setProperty("--block-color", node.color);
-  blockEl.innerHTML = `<span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span>`;
+  blockEl.innerHTML = `<span class="line-badge"></span><span class="gear" aria-hidden="true"></span><span class="kind"></span><span class="label"></span>`;
+  blockEl.querySelector(".line-badge").textContent = node.lineNumber ? `L${node.lineNumber}` : "";
   blockEl.querySelector(".kind").textContent = node.kind;
   blockEl.querySelector(".label").innerHTML = node.fields
     ? renderFields(node.fields)
@@ -483,15 +520,18 @@ function renderOutline(model) {
   els.outlineView.innerHTML = "";
   flatten(model).forEach((item) => {
     const li = document.createElement("li");
-    li.style.marginLeft = `${item.depth * 18}px`;
-    li.textContent = `${item.kind}：${item.label}${item.moto ? `（${item.moto.type}）` : ""}`;
+    if (item.lineNumber) li.dataset.line = String(item.lineNumber);
+    li.style.paddingLeft = `${item.depth * 18}px`;
+    li.innerHTML = `<span class="outline-line-code"></span><span class="outline-text"></span>`;
+    li.querySelector(".outline-line-code").textContent = item.lineNumber ? `L${item.lineNumber}` : "";
+    li.querySelector(".outline-text").textContent = `${item.kind}：${item.label}${item.moto ? `（${item.moto.type}）` : ""}`;
     els.outlineView.append(li);
   });
 }
 
 function flatten(nodes, depth = 0) {
   return nodes.flatMap((node) => [
-    { kind: node.kind, label: node.label, depth, moto: node.moto },
+    { kind: node.kind, label: node.label, depth, moto: node.moto, lineNumber: node.lineNumber },
     ...flatten(node.children || [], depth + 1)
   ]);
 }
@@ -557,7 +597,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const title = isLoop ? "loop   重複執行區" : "setup   開始設定區";
     const svg = `
       ${svgBlockPath(x, y, headW, 40, color, false)}
-      <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="500" fill="#fff">${escapeXml(title)}</text>
+      <text x="${x + 18}" y="${y + 25}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="16" font-weight="400" fill="#101714">${escapeXml(title)}</text>
       <rect x="${x}" y="${bodyY}" width="${bodyW}" height="${bodyH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
       ${children.svg}
     `;
@@ -571,7 +611,7 @@ function drawExportNode(node, x, y, maxWidth) {
   const labelLines = wrapSvgText(label, Math.max(14, Math.floor(labelWidth / 14)));
   const blockH = Math.max(38, 18 + labelLines.length * 18);
   let svg = `${svgBlockPath(x, y, w, blockH, color, true)}
-    ${svgTextLines(labelLines, x + 18, y + 24, 15, "#fff")}
+    ${svgTextLines(labelLines, x + 18, y + 24, 15, "#101714")}
   `;
   let height = blockH;
   if (node.children?.length) {
@@ -582,7 +622,7 @@ function drawExportNode(node, x, y, maxWidth) {
     const mouthH = Math.max(36, children.height + 14);
     const mouthW = Math.max(340, Math.min(maxWidth, Math.max(w + 24, children.width + 70)));
     svg += `<rect x="${mouthX}" y="${mouthY}" width="${mouthW}" height="${mouthH}" fill="${color}" stroke="rgba(0,0,0,.16)"/>
-      <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="600" fill="#fff">${node.kind.includes("否則") ? "else" : "do"}</text>
+      <text x="${mouthX + 14}" y="${mouthY + 29}" font-family="Segoe UI, Noto Sans TC, Arial" font-size="15" font-weight="400" fill="#101714">${node.kind.includes("否則") ? "else" : "do"}</text>
       ${children.svg}`;
     height += mouthH - 2;
   }
@@ -692,6 +732,57 @@ function exportPng() {
   img.src = url;
 }
 
+function getCodeLineHeight() {
+  const style = window.getComputedStyle(els.codeInput);
+  const lineHeight = Number.parseFloat(style.lineHeight);
+  return Number.isFinite(lineHeight) ? lineHeight : 22;
+}
+
+function getTopCodeLine() {
+  return Math.max(1, Math.floor(els.codeInput.scrollTop / getCodeLineHeight()) + 1);
+}
+
+function scrollCodeToLine(lineNumber) {
+  els.codeInput.scrollTop = Math.max(0, (lineNumber - 1) * getCodeLineHeight());
+  syncLineNumberScroll();
+}
+
+function findBlockForLine(lineNumber) {
+  const candidates = [...els.blockCanvas.querySelectorAll("[data-line]")]
+    .map((element) => ({ element, line: Number(element.dataset.line) }))
+    .filter((item) => Number.isFinite(item.line))
+    .sort((a, b) => a.line - b.line);
+  return candidates.find((item) => item.line >= lineNumber)?.element || candidates[candidates.length - 1]?.element;
+}
+
+function scrollBlocksToLine(lineNumber) {
+  const target = findBlockForLine(lineNumber);
+  if (!target) return;
+  const containerRect = els.blockCanvas.getBoundingClientRect();
+  const targetRect = target.getBoundingClientRect();
+  els.blockCanvas.scrollTop += targetRect.top - containerRect.top - 12;
+}
+
+function getTopBlockLine() {
+  const containerRect = els.blockCanvas.getBoundingClientRect();
+  const candidates = [...els.blockCanvas.querySelectorAll("[data-line]")]
+    .map((element) => ({ element, line: Number(element.dataset.line), top: element.getBoundingClientRect().top }))
+    .filter((item) => Number.isFinite(item.line));
+  const visible = candidates.find((item) => item.top >= containerRect.top - 2);
+  return (visible || candidates[0])?.line || 1;
+}
+
+function withScrollSync(action) {
+  if (!els.syncScroll.checked || isSyncingScroll) return;
+  isSyncingScroll = true;
+  requestAnimationFrame(() => {
+    action();
+    requestAnimationFrame(() => {
+      isSyncingScroll = false;
+    });
+  });
+}
+
 document.querySelectorAll("[data-view]").forEach((button) => {
   button.addEventListener("click", () => {
     document.querySelectorAll("[data-view]").forEach((btn) => btn.classList.remove("active"));
@@ -703,6 +794,13 @@ document.querySelectorAll("[data-view]").forEach((button) => {
 });
 
 els.codeInput.addEventListener("input", render);
+els.codeInput.addEventListener("scroll", () => {
+  syncLineNumberScroll();
+  withScrollSync(() => scrollBlocksToLine(getTopCodeLine()));
+});
+els.blockCanvas.addEventListener("scroll", () => {
+  withScrollSync(() => scrollCodeToLine(getTopBlockLine()));
+});
 els.languageSelect.addEventListener("change", render);
 els.boardSelect.addEventListener("change", render);
 els.loadExample.addEventListener("click", () => {
